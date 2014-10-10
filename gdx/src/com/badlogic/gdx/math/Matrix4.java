@@ -466,16 +466,18 @@ public class Matrix4 implements Serializable {
 			* val[M12] * val[M21] - val[M01] * val[M10] * val[M22] - val[M02] * val[M11] * val[M20];
 	}
 
-	/** Sets the matrix to a projection matrix with a near- and far plane, a field of view in degrees and an aspect ratio.
+	/** Sets the matrix to a projection matrix with a near- and far plane, a field of view in degrees and an aspect ratio. Note that
+	 * the field of view specified is the angle in degrees for the height, the field of view for the width will be calculated
+	 * according to the aspect ratio.
 	 * 
 	 * @param near The near plane
 	 * @param far The far plane
-	 * @param fov The field of view in degrees
+	 * @param fovy The field of view of the height in degrees
 	 * @param aspectRatio The "width over height" aspect ratio
 	 * @return This matrix for the purpose of chaining methods together. */
-	public Matrix4 setToProjection (float near, float far, float fov, float aspectRatio) {
+	public Matrix4 setToProjection (float near, float far, float fovy, float aspectRatio) {
 		idt();
-		float l_fd = (float)(1.0 / Math.tan((fov * (Math.PI / 180)) / 2.0));
+		float l_fd = (float)(1.0 / Math.tan((fovy * (Math.PI / 180)) / 2.0));
 		float l_a1 = (far + near) / (near - far);
 		float l_a2 = (2 * far * near) / (near - far);
 		val[M00] = l_fd / aspectRatio;
@@ -980,6 +982,77 @@ public class Matrix4 implements Serializable {
 		val[13] = mat.val[7];
 		val[14] = 0;
 		val[15] = mat.val[8];
+		return this;
+	}
+
+	/** Sets this matrix to the given affine matrix. The values are mapped as follows:
+	 *
+	 * <pre>
+	 *      [  M00  M01   0   M02  ]
+	 *      [  M10  M11   0   M12  ]
+	 *      [   0    0    1    0   ]
+	 *      [   0    0    0    1   ]
+	 * </pre>
+	 * @param affine the affine matrix
+	 * @return This matrix for chaining */
+	public Matrix4 set (Affine2 affine) {
+		val[M00] = affine.m00;
+		val[M10] = affine.m10;
+		val[M20] = 0;
+		val[M30] = 0;
+		val[M01] = affine.m01;
+		val[M11] = affine.m11;
+		val[M21] = 0;
+		val[M31] = 0;
+		val[M02] = 0;
+		val[M12] = 0;
+		val[M22] = 1;
+		val[M32] = 0;
+		val[M03] = affine.m02;
+		val[M13] = affine.m12;
+		val[M23] = 0;
+		val[M33] = 1;
+		return this;
+	}
+
+	/** Assumes that this matrix is a 2D affine transformation, copying only the relevant components. The values are mapped as
+	 * follows:
+	 *
+	 * <pre>
+	 *      [  M00  M01   _   M02  ]
+	 *      [  M10  M11   _   M12  ]
+	 *      [   _    _    _    _   ]
+	 *      [   _    _    _    _   ]
+	 * </pre>
+	 * @param affine the source matrix
+	 * @return This matrix for chaining */
+	public Matrix4 setAsAffine (Affine2 affine) {
+		val[M00] = affine.m00;
+		val[M10] = affine.m10;
+		val[M01] = affine.m01;
+		val[M11] = affine.m11;
+		val[M03] = affine.m02;
+		val[M13] = affine.m12;
+		return this;
+	}
+
+	/** Assumes that both matrices are 2D affine transformations, copying only the relevant components. The copied values are:
+	 *
+	 * <pre>
+	 *      [  M00  M01   _   M03  ]
+	 *      [  M10  M11   _   M13  ]
+	 *      [   _    _    _    _   ]
+	 *      [   _    _    _    _   ]
+	 * </pre>
+	 * @param mat the source matrix
+	 * @return This matrix for chaining */
+	public Matrix4 setAsAffine (Matrix4 mat) {
+		val[M00] = mat.val[M00];
+		val[M10] = mat.val[M10];
+		val[M01] = mat.val[M01];
+		val[M11] = mat.val[M11];
+		val[M03] = mat.val[M03];
+		val[M13] = mat.val[M13];
 		return this;
 	}
 

@@ -34,7 +34,6 @@ import org.robovm.apple.uikit.UIDevice;
 import org.robovm.apple.uikit.UIEvent;
 import org.robovm.apple.uikit.UIInterfaceOrientation;
 import org.robovm.apple.uikit.UIInterfaceOrientationMask;
-import org.robovm.apple.uikit.UIScreen;
 import org.robovm.apple.uikit.UIUserInterfaceIdiom;
 import org.robovm.objc.Selector;
 import org.robovm.objc.annotation.BindSelector;
@@ -64,9 +63,14 @@ public class IOSGraphics extends NSObject implements Graphics, GLKViewDelegate, 
 		}
 
 		@Override
-		public void viewDidAppear(boolean animated) {
-			if (app.viewControllerListener != null)
-				app.viewControllerListener.viewDidAppear(animated);
+		public void viewWillAppear (boolean arg0) {
+			super.viewWillAppear(arg0);
+			setPaused(!graphics.isContinuous);
+		}
+
+		@Override
+		public void viewDidAppear (boolean animated) {
+			if (app.viewControllerListener != null) app.viewControllerListener.viewDidAppear(animated);
 		}
 
 		@Override
@@ -85,7 +89,7 @@ public class IOSGraphics extends NSObject implements Graphics, GLKViewDelegate, 
 		}
 
 		@Override
-		public UIInterfaceOrientationMask getSupportedInterfaceOrientations() {
+		public UIInterfaceOrientationMask getSupportedInterfaceOrientations () {
 			long mask = 0;
 			if (app.config.orientationLandscape) {
 				mask |= ((1 << UIInterfaceOrientation.LandscapeLeft.value()) | (1 << UIInterfaceOrientation.LandscapeRight.value()));
@@ -97,7 +101,7 @@ public class IOSGraphics extends NSObject implements Graphics, GLKViewDelegate, 
 		}
 
 		@Override
-		public boolean shouldAutorotate() {
+		public boolean shouldAutorotate () {
 			return true;
 		}
 
@@ -148,18 +152,21 @@ public class IOSGraphics extends NSObject implements Graphics, GLKViewDelegate, 
 	private float density = 1;
 
 	volatile boolean paused;
+	private long frameId = -1;
+	private boolean isContinuous = true;
 
 	IOSApplicationConfiguration config;
 	EAGLContext context;
 	GLKView view;
 	IOSUIViewController viewController;
 
-	public IOSGraphics (CGSize bounds, IOSApplication app, IOSApplicationConfiguration config, IOSInput input, GL20 gl20) {
+	public IOSGraphics (CGSize bounds, float scale, IOSApplication app, IOSApplicationConfiguration config, IOSInput input,
+		GL20 gl20) {
 		this.config = config;
 		// setup view and OpenGL
 		width = (int)bounds.width();
 		height = (int)bounds.height();
-		app.debug(tag, bounds.width() + "x" + bounds.height() + ", " + UIScreen.getMainScreen().getScale());
+		app.debug(tag, bounds.width() + "x" + bounds.height() + ", " + scale);
 		this.gl20 = gl20;
 
 		context = new EAGLContext(EAGLRenderingAPI.OpenGLES2);
@@ -234,9 +241,6 @@ public class IOSGraphics extends NSObject implements Graphics, GLKViewDelegate, 
 		// determine display density and PPI (PPI values via Wikipedia!)
 		density = 1f;
 
-		// if ((UIScreen.getMainScreen().respondsToSelector(new
-		// Selector("scale")))) {
-		double scale = UIScreen.getMainScreen().getScale();
 		app.debug(tag, "Calculating density, UIScreen.mainScreen.scale: " + scale);
 		if (scale == 2) density = 2f;
 
@@ -318,6 +322,7 @@ public class IOSGraphics extends NSObject implements Graphics, GLKViewDelegate, 
 		}
 
 		input.processEvents();
+		frameId++;
 		app.listener.render();
 	}
 
@@ -458,18 +463,20 @@ public class IOSGraphics extends NSObject implements Graphics, GLKViewDelegate, 
 
 	@Override
 	public void setContinuousRendering (boolean isContinuous) {
-		// FIXME implement this if possible
+		this.isContinuous = isContinuous;
+		viewController.setPaused(!isContinuous);
+		viewController.setResumeOnDidBecomeActive(isContinuous);
+		view.setEnableSetNeedsDisplay(!isContinuous);
 	}
 
 	@Override
 	public boolean isContinuousRendering () {
-		// FIXME implement this if possible
-		return true;
+		return isContinuous;
 	}
 
 	@Override
 	public void requestRendering () {
-		// FIXME implement this if possible
+		view.setNeedsDisplay();
 	}
 
 	@Override
@@ -485,5 +492,10 @@ public class IOSGraphics extends NSObject implements Graphics, GLKViewDelegate, 
 	@Override
 	public GL30 getGL30 () {
 		return null;
+	}
+
+	@Override
+	public long getFrameId () {
+		return frameId;
 	}
 }

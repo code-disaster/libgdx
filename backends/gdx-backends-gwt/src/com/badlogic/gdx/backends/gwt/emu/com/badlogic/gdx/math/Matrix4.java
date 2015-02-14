@@ -71,8 +71,8 @@ public class Matrix4 implements Serializable {
 	public static final int M33 = 15;
 
 	/** @Deprecated Do not use this member, instead use a temporary Matrix4 instance, or create a temporary float array. */
-	//@Deprecated
-	//public static final float tmp[] = new float[16]; // FIXME Change to private access
+	@Deprecated
+	public static final float tmp[] = new float[16]; // FIXME Change to private access
 	public final float val[] = new float[16];
 
 	/** Constructs an identity matrix */

@@ -44,6 +44,7 @@
 
   <modules>
     <module>gdx-tests</module>
+    <module>gdx-tests-lwjgl</module>
     <module>gdx-tests-lwjgl3</module>
   </modules>
 

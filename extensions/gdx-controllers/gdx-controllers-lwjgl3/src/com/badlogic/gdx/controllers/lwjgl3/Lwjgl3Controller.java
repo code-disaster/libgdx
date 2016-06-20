@@ -29,11 +29,6 @@ public class Lwjgl3Controller implements Controller {
 	}
 	
 	void pollState() {
-		if(!GLFW.glfwJoystickPresent(index)) {
-			manager.disconnected(this);
-			return;
-		}
-		
 		FloatBuffer axes = GLFW.glfwGetJoystickAxes(index);
 		if(axes == null) {
 			manager.disconnected(this);

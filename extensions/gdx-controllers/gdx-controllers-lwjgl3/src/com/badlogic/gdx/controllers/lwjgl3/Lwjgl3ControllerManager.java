@@ -27,7 +27,12 @@ public class Lwjgl3ControllerManager implements ControllerManager {
 				if (event == GLFW.GLFW_CONNECTED) {
 					connected(new Lwjgl3Controller(Lwjgl3ControllerManager.this, joy));
 				} else if (event == GLFW.GLFW_DISCONNECTED) {
-					disconnected(new Lwjgl3Controller(Lwjgl3ControllerManager.this, joy));
+					for (int i = controllers.size - 1; i >= 0; i--) {
+						Lwjgl3Controller controller = (Lwjgl3Controller) controllers.get(i);
+						if (controller.index == joy) {
+							disconnected(controller);
+						}
+					}
 				}
 			}
 		});

@@ -1,4 +1,6 @@
 [1.9.5]
+- Allow window icons to be set in Lwjgl3ApplicationConfiguration or LwjglWindowConfiguration.
+- Allow window icon and title to be changed in Lwjgl3Window
 - API Addition: ApplicationLogger interface, allowing easier access to custom logging
 
 [1.9.4]

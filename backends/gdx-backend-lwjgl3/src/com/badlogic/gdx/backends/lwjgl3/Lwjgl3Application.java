@@ -127,6 +127,7 @@ public class Lwjgl3Application implements Application {
 				((OpenALAudio) audio).update();
 			}
 
+			boolean hasWindowsUpdated = false;
 			closedWindows.clear();
 			for (Lwjgl3Window window : windows) {
 				Gdx.graphics = window.getGraphics();
@@ -138,11 +139,11 @@ public class Lwjgl3Application implements Application {
 				GLFW.glfwMakeContextCurrent(window.getWindowHandle());
 				currentWindow = window;
 				synchronized (lifecycleListeners) {
-					window.update();
-				}				
+					hasWindowsUpdated = window.update() || hasWindowsUpdated;
+				}
 				if (window.shouldClose()) {
 					closedWindows.add(window);
-				}				
+				}
 			}
 			GLFW.glfwPollEvents();
 
@@ -170,6 +171,16 @@ public class Lwjgl3Application implements Application {
 				closedWindow.dispose();
 
 				windows.removeValue(closedWindow, false);
+			}
+
+			if (!hasWindowsUpdated) {
+				// Sleep a few milliseconds in case no rendering was requested
+				// with continuous rendering disabled.
+				try {
+					Thread.sleep(1000/60);
+				} catch (InterruptedException e) {
+					// ignore
+				}
 			}
 		}
 	}

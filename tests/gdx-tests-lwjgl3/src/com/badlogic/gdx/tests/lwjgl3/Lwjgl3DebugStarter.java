@@ -184,8 +184,13 @@ public class Lwjgl3DebugStarter {
 			}
 
 			@Override
+			public void moved(int x, int y) {
+				Gdx.app.log("Window", "moved: " + x + ", " + y);
+			}
+
+			@Override
 			public void iconified (boolean isIconified) {
-				Gdx.app.log("Window", "iconified: "+ (isIconified ? "true" : "false"));
+				Gdx.app.log("Window", "iconified: " + (isIconified ? "true" : "false"));
 			}
 			
 			@Override
@@ -217,8 +222,13 @@ public class Lwjgl3DebugStarter {
 			}
 
 			@Override
-			public void refreshRequested() {
+			public void refreshRequested () {
 				Gdx.app.log("Window", "refreshRequested");
+			}
+
+			@Override
+			public void cursorEntered (boolean entered) {
+				Gdx.app.log("Window", "cursor " + (entered ? "entered" : "left"));
 			}
 		});
 		for(DisplayMode mode: Lwjgl3ApplicationConfiguration.getDisplayModes()) {

@@ -14,11 +14,21 @@
  * limitations under the License.
  ******************************************************************************/
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+package com.badlogic.gdx.backends.lwjgl3;
 
-dependencies {
-    compileOnly project(":backends:gdx-backend-lwjgl3")
-    compileOnly project(":extensions:gdx-controllers:gdx-controllers")
-    compileOnly libraries.lwjgl3
+import static com.badlogic.gdx.Graphics.DisplayMode;
+
+public class Lwjgl3DisplayMode extends DisplayMode {
+
+	private final Lwjgl3Monitor monitor;
+
+	Lwjgl3DisplayMode(Lwjgl3Monitor monitor, int width, int height, int refreshRate, int bitsPerPixel) {
+		super(width, height, refreshRate, bitsPerPixel);
+		this.monitor = monitor;
+	}
+
+	public long getMonitorHandle() {
+		return monitor.getMonitorHandle();
+	}
+
 }

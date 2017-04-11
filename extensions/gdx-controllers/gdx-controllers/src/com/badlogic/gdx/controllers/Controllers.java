@@ -24,9 +24,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics.GraphicsType;
 import com.badlogic.gdx.LifecycleListener;
 import com.badlogic.gdx.Application.ApplicationType;
-import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.badlogic.gdx.utils.ObjectMap;
+import com.badlogic.gdx.utils.*;
 import com.badlogic.gdx.utils.reflect.ClassReflection;
 
 /** Provides access to connected {@link Controller} instances. Query the available controllers via {@link #getControllers()}, add
@@ -116,6 +114,7 @@ public class Controllers {
 
 		managers.put(Gdx.app, manager);
 		final Application app = Gdx.app;
+		final ControllerManager m = manager;
 		Gdx.app.addLifecycleListener(new LifecycleListener() {
 			@Override
 			public void resume () {
@@ -127,6 +126,9 @@ public class Controllers {
 
 			@Override
 			public void dispose () {
+				if (m instanceof Disposable) {
+					((Disposable) m).dispose();
+				}
 				managers.remove(app);
 				Gdx.app.log(TAG, "removed manager for application, " + managers.size + " managers active");
 

@@ -8,7 +8,16 @@ package com.badlogic.gdx.backends.lwjgl3;
  */
 public class Lwjgl3WindowAdapter implements Lwjgl3WindowListener {
 	@Override
+	public void configure() {
+	}
+
+	@Override
 	public void created(Lwjgl3Window window) {
+	}
+
+	@Override
+	public void moved(int x, int y) {
+
 	}
 
 	@Override
@@ -38,5 +47,9 @@ public class Lwjgl3WindowAdapter implements Lwjgl3WindowListener {
 
 	@Override
 	public void refreshRequested() {
+	}
+
+	@Override
+	public void cursorEntered(boolean entered) {
 	}
 }

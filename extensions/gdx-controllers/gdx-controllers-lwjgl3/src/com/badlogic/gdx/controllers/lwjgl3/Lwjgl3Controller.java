@@ -1,91 +1,110 @@
 package com.badlogic.gdx.controllers.lwjgl3;
 
-import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-
-import org.lwjgl.glfw.GLFW;
-
-import com.badlogic.gdx.controllers.Controller;
-import com.badlogic.gdx.controllers.ControllerListener;
-import com.badlogic.gdx.controllers.PovDirection;
+import com.badlogic.gdx.controllers.*;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_render;
+import static org.lwjgl.glfw.GLFW.*;
+
 public class Lwjgl3Controller implements Controller {
+
 	final Lwjgl3ControllerManager manager;
-	final Array<ControllerListener> listeners = new Array<ControllerListener>();
+	final Array<ControllerListener> listeners = new Array<>();
 	final int index;
-	final float[] axisState;	
-	final boolean[] buttonState;
+	final float[] axisState;
+	final byte[] buttonState;
 	final byte[] hatState;
-	final Vector3 zero = new Vector3(0, 0, 0);
 	final String name;
-	
-	public Lwjgl3Controller(Lwjgl3ControllerManager manager, int index) {
+
+	public Lwjgl3Controller (Lwjgl3ControllerManager manager, int index) {
 		this.manager = manager;
 		this.index = index;
-		this.axisState = new float[GLFW.glfwGetJoystickAxes(index).limit()];	
-		this.buttonState = new boolean[GLFW.glfwGetJoystickButtons(index).limit()];
-		this.hatState = new byte[GLFW.glfwGetJoystickHats(index).limit()];
-		this.name = GLFW.glfwGetJoystickName(index);
+		this.axisState = new float[glfwGetJoystickAxes(index).limit()];
+		this.buttonState = new byte[glfwGetJoystickButtons(index).limit()];
+		this.hatState = new byte[glfwGetJoystickHats(index).limit()];
+		this.name = glfwGetJoystickName(index);
 	}
-	
-	void pollState() {
-		if(!GLFW.glfwJoystickPresent(index)) {
-			manager.disconnected(this);
-			return;
-		}
-		
-		FloatBuffer axes = GLFW.glfwGetJoystickAxes(index);
-		if(axes == null) {
-			manager.disconnected(this);
-			return;
-		}
-		ByteBuffer buttons = GLFW.glfwGetJoystickButtons(index);
-		if(buttons == null) {
-			manager.disconnected(this);
-			return;
-		}
-		ByteBuffer hats = GLFW.glfwGetJoystickHats(index);
-		if(hats == null) {
-			manager.disconnected(this);
-			return;
+
+	boolean update () {
+
+		FloatBuffer axes = glfwGetJoystickAxes(index);
+		if (axes == null) {
+			return false;
 		}
 
-		for(int i = 0; i < axes.limit(); i++) {
-			if(axisState[i] != axes.get(i)) {
-				for(ControllerListener listener: listeners) {
-					listener.axisMoved(this, i, axes.get(i));
-				}
-				manager.axisChanged(this, i, axes.get(i));
-			}
-			axisState[i] = axes.get(i);
+		ByteBuffer buttons = glfwGetJoystickButtons(index);
+		if (buttons == null) {
+			return false;
 		}
 
-		for(int i = 0; i < buttons.limit(); i++) {
-			if(buttonState[i] != (buttons.get(i) == GLFW.GLFW_PRESS)) {
-				for(ControllerListener listener: listeners) {
-					if(buttons.get(i) == GLFW.GLFW_PRESS) {
-						listener.buttonDown(this, i);
-					} else {
-						listener.buttonUp(this, i);
-					}
-				}
-				manager.buttonChanged(this, i, buttons.get(i) == GLFW.GLFW_PRESS);
-			}
-			buttonState[i] = buttons.get(i) == GLFW.GLFW_PRESS;
+		ByteBuffer hats = glfwGetJoystickHats(index);
+		if (hats == null) {
+			return false;
 		}
 
-		for(int i = 0; i < hats.limit(); i++) {
-			if(hatState[i] != hats.get(i)) {
-				hatState[i] = hats.get(i);
-				for(ControllerListener listener: listeners) {
-					listener.povMoved(this, i, getPov(i));
-				}
-				manager.hatChanged(this, i, getPov(i));
+		for (int i = 0; i < axes.limit(); i++) {
+			float state = axes.get(i);
+			if (!MathUtils.isEqual(state, axisState[i])) {
+				axisChanged(i, state);
+				axisState[i] = state;
 			}
 		}
 
+		for (int i = 0; i < buttons.limit(); i++) {
+			byte state = buttons.get(i);
+			if (state != buttonState[i]) {
+				buttonChanged(i, state);
+				buttonState[i] = state;
+			}
+		}
+
+		for (int i = 0; i < hats.limit(); i++) {
+			byte state = hats.get(i);
+			if (state != hatState[i]) {
+				hatChanged(i);
+				hatState[i] = state;
+			}
+		}
+
+		return true;
+	}
+
+	private void axisChanged (int index, float state) {
+		__post_render(() -> {
+			for (ControllerListener listener : listeners) {
+				listener.axisMoved(this, index, state);
+			}
+			manager.axisChanged(this, index, state);
+		});
+	}
+
+	private void buttonChanged (int index, byte state) {
+		__post_render(() -> {
+			boolean pressed = state == GLFW_PRESS;
+			for (ControllerListener listener : listeners) {
+				if (pressed) {
+					listener.buttonDown(this, index);
+				} else {
+					listener.buttonUp(this, index);
+				}
+			}
+			manager.buttonChanged(this, index, pressed);
+		});
+	}
+
+	private void hatChanged (int index) {
+		__post_render(() -> {
+			PovDirection pov = getPov(index);
+			for (ControllerListener listener : listeners) {
+				listener.povMoved(this, index, pov);
+			}
+			manager.hatChanged(this, index, pov);
+		});
 	}
 
 	@Override
@@ -97,18 +116,18 @@ public class Lwjgl3Controller implements Controller {
 	public void removeListener (ControllerListener listener) {
 		listeners.removeValue(listener, true);
 	}
-	
+
 	@Override
 	public boolean getButton (int buttonCode) {
-		if(buttonCode < 0 || buttonCode >= buttonState.length) {
+		if (buttonCode < 0 || buttonCode >= buttonState.length) {
 			return false;
 		}
-		return buttonState[buttonCode];
+		return buttonState[buttonCode] == GLFW_PRESS;
 	}
 
 	@Override
 	public float getAxis (int axisCode) {
-		if(axisCode < 0 || axisCode >= axisState.length) {
+		if (axisCode < 0 || axisCode >= axisState.length) {
 			return 0;
 		}
 		return axisState[axisCode];
@@ -118,21 +137,21 @@ public class Lwjgl3Controller implements Controller {
 	public PovDirection getPov (int povCode) {
 		if (povCode < 0 || povCode >= hatState.length) return PovDirection.center;
 		switch (hatState[povCode]) {
-			case GLFW.GLFW_HAT_UP:
+			case GLFW_HAT_UP:
 				return PovDirection.north;
-			case GLFW.GLFW_HAT_DOWN:
+			case GLFW_HAT_DOWN:
 				return PovDirection.south;
-			case GLFW.GLFW_HAT_RIGHT:
+			case GLFW_HAT_RIGHT:
 				return PovDirection.east;
-			case GLFW.GLFW_HAT_LEFT:
+			case GLFW_HAT_LEFT:
 				return PovDirection.west;
-			case GLFW.GLFW_HAT_RIGHT_UP:
+			case GLFW_HAT_RIGHT_UP:
 				return PovDirection.northEast;
-			case GLFW.GLFW_HAT_RIGHT_DOWN:
+			case GLFW_HAT_RIGHT_DOWN:
 				return PovDirection.southEast;
-			case GLFW.GLFW_HAT_LEFT_UP:
+			case GLFW_HAT_LEFT_UP:
 				return PovDirection.northWest;
-			case GLFW.GLFW_HAT_LEFT_DOWN:
+			case GLFW_HAT_LEFT_DOWN:
 				return PovDirection.southWest;
 			default:
 				return PovDirection.center;
@@ -151,7 +170,7 @@ public class Lwjgl3Controller implements Controller {
 
 	@Override
 	public Vector3 getAccelerometer (int accelerometerCode) {
-		return zero;
+		return Vector3.Zero;
 	}
 
 	@Override
@@ -161,5 +180,5 @@ public class Lwjgl3Controller implements Controller {
 	@Override
 	public String getName () {
 		return name;
-	}	
+	}
 }

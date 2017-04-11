@@ -24,10 +24,20 @@ import com.badlogic.gdx.ApplicationListener;
  * focus loss and gain, and window close events. Can be set per window
  * via {@link Lwjgl3ApplicationConfiguration} and {@link Lwjgl3WindowConfiguration}.
  * Close events can be canceled by returning false.
- * 
+ *
  * @author badlogic
  */
 public interface Lwjgl3WindowListener {
+
+	/**
+	 * Called after GLFW window hints are configured, but before the window is created. This
+	 * can be used to setup additional window hints, or overwrite existing ones.
+	 *
+	 * This function is called from the main thread.
+	 *
+	 * @see Lwjgl3Window#createGlfwWindow(long)
+	 */
+	void configure();
 
 	/**
 	 * Called after the GLFW window is created. Before this callback is received, it's
@@ -42,6 +52,14 @@ public interface Lwjgl3WindowListener {
 	 * @see Lwjgl3Application#newWindow(ApplicationListener, Lwjgl3WindowConfiguration)
 	 */
 	void created(Lwjgl3Window window);
+
+	/**
+	 * Called when the window position changes. The position is passed in virtual screen coordinates.
+	 *
+	 * @param x virtual screen X position
+	 * @param y virtual screen Y position
+	 */
+	void moved(int x, int y);
 
 	/**
 	 * Called when the window is iconified (i.e. its minimize button
@@ -91,5 +109,10 @@ public interface Lwjgl3WindowListener {
 	 * When this occurs, {@link Lwjgl3Graphics#requestRendering()} is automatically called.
 	 */
 	void refreshRequested();
+
+	/**
+	 * Called when the cursor enters or leaves the window client area.
+	 */
+	void cursorEntered(boolean entered);
 
 }

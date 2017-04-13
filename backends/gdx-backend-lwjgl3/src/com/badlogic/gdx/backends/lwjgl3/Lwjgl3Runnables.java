@@ -17,11 +17,14 @@
 package com.badlogic.gdx.backends.lwjgl3;
 
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.LongMap;
 
+import java.util.ConcurrentModificationException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
+import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
 import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
 
 /**
@@ -32,42 +35,89 @@ import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
  */
 class Lwjgl3Runnables {
 
-	private final Array<Runnable> renderThreadRunnables = new Array<>();
-	private final Array<Runnable> renderThreadRunnablesExecuted = new Array<>();
+	private static final LongMap<Array<WindowDelegate>> mainThreadDelegates = new LongMap<>();
+	private static final Array<WindowDelegate> mainThreadDelegatesExecuted = new Array<>();
 
-	private final Array<Runnable> mainThreadRunnables = new Array<>();
-	private final Array<Runnable> mainThreadRunnablesExecuted = new Array<>();
+	private static final LongMap<Array<Runnable>> renderThreadRunnables = new LongMap<>();
+	private static final Array<Runnable> renderThreadRunnablesExecuted = new Array<>();
 
-	/**
-	 * Queues a non-blocking function for execution in the render thread.
-	 */
-	void postRenderThreadRunnable(Runnable runnable) {
+	private static final AtomicLong mainThreadContext = new AtomicLong();
+	private static final AtomicLong renderThreadContext = new AtomicLong();
+
+	@FunctionalInterface
+	interface WindowDelegate {
+
+		void run(long window);
+	}
+
+	@FunctionalInterface
+	interface WindowDelegateFunction<R> {
+
+		R call(long window);
+	}
+
+	static void registerContext(long context) {
+		synchronized (mainThreadDelegates) {
+			mainThreadDelegates.put(context, new Array<>());
+		}
 		synchronized (renderThreadRunnables) {
-			renderThreadRunnables.add(runnable);
+			renderThreadRunnables.put(context, new Array<>());
 		}
 	}
 
-	int executeRenderThreadRunnables() {
-		renderThreadRunnablesExecuted.clear();
-
+	static void unregisterContext(long context) {
+		synchronized (mainThreadDelegates) {
+			mainThreadDelegates.remove(context);
+		}
 		synchronized (renderThreadRunnables) {
-			renderThreadRunnablesExecuted.addAll(renderThreadRunnables);
-			renderThreadRunnables.clear();
+			renderThreadRunnables.remove(context);
 		}
+	}
 
-		for (Runnable runnable : renderThreadRunnablesExecuted) {
-			runnable.run();
+	static void __post_main(Runnable runnable) {
+		delegateToMainThread(0L, context -> runnable.run());
+	}
+
+	static void __post_main(long window, WindowDelegate delegate) {
+		delegateToMainThread(window, delegate);
+	}
+
+	static void __post_main(Lwjgl3Window window, WindowDelegate delegate) {
+		long context = window.getWindowHandle();
+		__post_main(context, delegate);
+	}
+
+	static <R> R __call_main(WindowDelegateFunction<R> delegate) throws InterruptedException {
+		return callMainThread(0L, delegate);
+	}
+
+	static <R> R __call_main(R defaultValue, WindowDelegateFunction<R> delegate) {
+		try {
+			return __call_main(delegate);
+		} catch (InterruptedException e) {
+			return defaultValue;
 		}
+	}
 
-		return renderThreadRunnablesExecuted.size;
+	static <R> R __call_main(Lwjgl3Window window, WindowDelegateFunction<R> delegate) throws InterruptedException {
+		long context = window.getWindowHandle();
+		return callMainThread(context, delegate);
+	}
+
+	static <R> R __call_main(Lwjgl3Window window, R defaultValue, WindowDelegateFunction<R> delegate) {
+		try {
+			return __call_main(window, delegate);
+		} catch (InterruptedException e) {
+			return defaultValue;
+		}
 	}
 
 	/**
 	 * Queues a non-blocking function for execution in the main thread.
 	 */
-	void postMainThreadRunnable(Runnable runnable) {
-		synchronized (mainThreadRunnables) {
-			mainThreadRunnables.add(runnable);
+	private static void delegateToMainThread(long window, WindowDelegate delegate) {
+		synchronized (mainThreadDelegates) {
+			mainThreadDelegates.get(window).add(delegate);
 			glfwPostEmptyEvent();
 		}
 	}
@@ -80,12 +130,12 @@ class Lwjgl3Runnables {
 	 * <p>
 	 * Throws an {@link InterruptedException} in case of an error.
 	 */
-	<R> R postMainThreadRunnable(Supplier<R> runnable) throws InterruptedException {
+	private static <R> R callMainThread(long window, WindowDelegateFunction<R> delegate) throws InterruptedException {
 		AtomicReference<R> result = new AtomicReference<>();
 		CountDownLatch latch = new CountDownLatch(1);
-		synchronized (mainThreadRunnables) {
-			mainThreadRunnables.add(() -> {
-				result.set(runnable.get());
+		synchronized (mainThreadDelegates) {
+			mainThreadDelegates.get(window).add(context -> {
+				result.set(delegate.call(context));
 				latch.countDown();
 			});
 			glfwPostEmptyEvent();
@@ -94,14 +144,100 @@ class Lwjgl3Runnables {
 		return result.get();
 	}
 
-	void executeMainThreadRunnables() {
-		mainThreadRunnablesExecuted.clear();
-		synchronized (mainThreadRunnables) {
-			mainThreadRunnablesExecuted.addAll(mainThreadRunnables);
-			mainThreadRunnables.clear();
+	static void executeMainThreadDelegates() {
+		executeMainThreadDelegates(0L);
+	}
+
+	static void executeMainThreadDelegates(Lwjgl3Window window) {
+		executeMainThreadDelegates(window.getWindowHandle());
+	}
+
+	private static void executeMainThreadDelegates(long window) {
+		mainThreadDelegatesExecuted.clear();
+		synchronized (mainThreadDelegates) {
+			Array<WindowDelegate> delegates = mainThreadDelegates.get(window);
+			mainThreadDelegatesExecuted.addAll(delegates);
+			delegates.clear();
 		}
-		for (Runnable runnable : mainThreadRunnablesExecuted) {
+		for (WindowDelegate delegate : mainThreadDelegatesExecuted) {
+			delegate.run(window);
+		}
+	}
+
+	static void __context_main(long window) {
+		setMainThreadContext(window);
+	}
+
+	private static void setMainThreadContext(long context) {
+		synchronized (mainThreadContext) {
+			if (context != 0L && context == renderThreadContext.get()) {
+				throw new ConcurrentModificationException("Context already active in render thread");
+			}
+			long current = mainThreadContext.get();
+			if (context != current) {
+				glfwMakeContextCurrent(context);
+				mainThreadContext.set(context);
+			}
+		}
+	}
+
+	static void __post_render(Runnable runnable) {
+		delegateToRenderThread(0L, runnable);
+	}
+
+	static void __post_render(long window, Runnable runnable) {
+		delegateToRenderThread(window, runnable);
+	}
+
+	static void __post_render(Lwjgl3Window window, Runnable runnable) {
+		long context = window.getWindowHandle();
+		delegateToRenderThread(context, runnable);
+	}
+
+	/**
+	 * Queues a non-blocking function for execution in the render thread.
+	 */
+	private static void delegateToRenderThread(long window, Runnable runnable) {
+		synchronized (renderThreadRunnables) {
+			renderThreadRunnables.get(window).add(runnable);
+		}
+	}
+
+	static int executeRenderThreadRunnables() {
+		return executeRenderThreadRunnables(0L);
+	}
+
+	static int executeRenderThreadRunnables(Lwjgl3Window window) {
+		return executeRenderThreadRunnables(window.getWindowHandle());
+	}
+
+	private static int executeRenderThreadRunnables(long window) {
+		renderThreadRunnablesExecuted.clear();
+		synchronized (renderThreadRunnables) {
+			Array<Runnable> runnables = renderThreadRunnables.get(window);
+			renderThreadRunnablesExecuted.addAll(runnables);
+			runnables.clear();
+		}
+		for (Runnable runnable : renderThreadRunnablesExecuted) {
 			runnable.run();
+		}
+		return renderThreadRunnablesExecuted.size;
+	}
+
+	static void __context_render(long window) {
+		setRenderThreadContext(window);
+	}
+
+	private static void setRenderThreadContext(long context) {
+		synchronized (mainThreadContext) {
+			if (context != 0L && context == mainThreadContext.get()) {
+				throw new ConcurrentModificationException("Context already active in main thread");
+			}
+			long current = renderThreadContext.get();
+			if (context != current) {
+				glfwMakeContextCurrent(context);
+				renderThreadContext.set(context);
+			}
 		}
 	}
 

@@ -16,6 +16,7 @@
 
 package com.badlogic.gdx.backends.lwjgl3;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.graphics.Cursor;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -25,6 +26,7 @@ import com.badlogic.gdx.utils.IntMap;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.system.MemoryStack;
 
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.*;
 import static org.lwjgl.glfw.GLFW.*;
 
 /**
@@ -50,24 +52,30 @@ public class Lwjgl3Cursor implements Cursor {
 	 */
 	Lwjgl3Cursor(Lwjgl3Window window, Pixmap pixmap, int xHotspot, int yHotspot) {
 		this.window = window;
-		final Pixmap cursor = copyPixmap(pixmap);
-		window.postMainThreadRunnable(() -> {
-			try (MemoryStack stack = MemoryStack.stackPush()) {
-				GLFWImage image = GLFWImage.callocStack(stack);
-				image.width(cursor.getWidth());
-				image.height(cursor.getHeight());
-				image.pixels(cursor.getPixels());
-				glfwMakeContextCurrent(window.getWindowHandle());
-				this.handle = glfwCreateCursor(image, xHotspot, yHotspot);
-				cursor.dispose();
-			}
+		final Pixmap cursorPixmap = copyPixmap(pixmap);
+		__post_render(window, () -> {
+			this.handle = __call_main(window, 0L, context -> {
+				try (MemoryStack stack = MemoryStack.stackPush()) {
+					GLFWImage image = GLFWImage.callocStack(stack);
+					image.width(cursorPixmap.getWidth());
+					image.height(cursorPixmap.getHeight());
+					image.pixels(cursorPixmap.getPixels());
+					__context_main(context);
+					long cursor = glfwCreateCursor(image, xHotspot, yHotspot);
+					cursorPixmap.dispose();
+					return cursor;
+				}
+			});
 		});
+		if (handle == 0L) {
+			Gdx.app.log("Lwjgl3Application", "Failed to create cursor");
+		}
 	}
 
 	@Override
 	public void dispose() {
 		if (handle != 0L) {
-			window.postMainThreadRunnable(() -> {
+			__post_main(window, context -> {
 				glfwDestroyCursor(handle);
 				handle = 0L;
 			});
@@ -75,7 +83,7 @@ public class Lwjgl3Cursor implements Cursor {
 	}
 
 	void setCursor() {
-		window.postMainThreadRunnable(() -> glfwSetCursor(window.getWindowHandle(), handle));
+		__post_main(window, context -> glfwSetCursor(context, handle));
 	}
 
 	/**
@@ -84,16 +92,15 @@ public class Lwjgl3Cursor implements Cursor {
 	 * decides to dispose the source pixmap right after the call to {@link #Lwjgl3Cursor}.
 	 */
 	private static Pixmap copyPixmap(Pixmap pixmap) {
-		int widht = MathUtils.nextPowerOfTwo(pixmap.getWidth());
+		int width = MathUtils.nextPowerOfTwo(pixmap.getWidth());
 		int height = MathUtils.nextPowerOfTwo(pixmap.getHeight());
-		Pixmap cursor = new Pixmap(widht, height, Pixmap.Format.RGBA8888);
+		Pixmap cursor = new Pixmap(width, height, Pixmap.Format.RGBA8888);
 		cursor.drawPixmap(pixmap, 0, 0);
 		return cursor;
 	}
 
 	static void setSystemCursor(Lwjgl3Window window, SystemCursor cursor) {
-		window.postMainThreadRunnable(() -> glfwSetCursor(
-				window.getWindowHandle(), systemCursors.get(cursor.ordinal())));
+		__post_main(window, context -> glfwSetCursor(context, systemCursors.get(cursor.ordinal())));
 	}
 
 	static void createSystemCursors() {

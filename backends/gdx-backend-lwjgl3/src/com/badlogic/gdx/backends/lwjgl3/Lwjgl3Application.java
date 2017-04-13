@@ -82,6 +82,8 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		renderThread.setUncaughtExceptionHandler(this::renderThreadExceptionHandler);
 		renderThread.start();
 
+		registerContext(0L);
+
 		mainThreadFunction();
 	}
 
@@ -92,17 +94,17 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 			while (!shouldExit) {
 				glfwWaitEventsTimeout(1.0);
-				executeMainThreadRunnables();
+				executeMainThreadDelegates();
 
 				int numWindows;
 				synchronized (windows) {
 					numWindows = windows.size;
 					for (int i = 0; i < numWindows; i++) {
-						windows.get(i).executeMainThreadRunnables();
+						executeMainThreadDelegates(windows.get(i));
 					}
 				}
 
-				glfwMakeContextCurrent(0L);
+				__context_main(0L);
 
 				shouldExit = numWindows == 0 || exceptionCaught;
 			}
@@ -120,6 +122,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	}
 
 	private void shutdown() {
+		unregisterContext(0L);
 		// TODO: audio
 		Lwjgl3Cursor.disposeSystemCursors();
 		errorCallback.free();
@@ -131,13 +134,14 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 	private void renderThreadFunction() {
 
-		try {
-			Lwjgl3Window primaryWindow = windows.get(0);
-			long primaryWindowHandle = postMainThreadRunnable(() -> primaryWindow.createWindow(0L));
-			primaryWindow.completeWindow(primaryWindowHandle);
-		} catch (InterruptedException e) {
-			throw new GdxRuntimeException("Failed to create primary window.", e);
+		Lwjgl3Window primaryWindow = windows.get(0);
+		long primaryWindowHandle = __call_main(0L, context -> primaryWindow.createWindow(0L));
+
+		if (primaryWindowHandle == 0L) {
+			throw new GdxRuntimeException("Failed to create primary window.");
 		}
+
+		primaryWindow.completeWindow(primaryWindowHandle);
 
 		if (config.debug) {
 			glDebugCallback = GLUtil.setupDebugMessageCallback(config.debugStream);
@@ -149,7 +153,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 		while (rendering) {
 
-			glfwMakeContextCurrent(0L);
+			__context_render(0L);
 
 			int numRunnablesExecuted = executeRenderThreadRunnables();
 			boolean shouldRequestRendering = numRunnablesExecuted > 0;
@@ -170,7 +174,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 					window.requestRendering();
 				}
 
-				numRunnablesExecuted = window.executeRenderThreadRunnables();
+				numRunnablesExecuted = executeRenderThreadRunnables(window);
 
 				window.makeCurrent();
 				currentWindow = window;
@@ -221,14 +225,10 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 				lifecycleListeners.clear();
 			}
 			window.dispose();
-			try {
-				postMainThreadRunnable(() -> {
-					window.disposeWindow();
-					return null;
-				});
-			} catch (InterruptedException e) {
-				error("Lwjgl3Application", "Exception while closing window.", e);
-			}
+			__call_main((Void) null, context -> {
+				window.disposeWindow();
+				return null;
+			});
 		}
 	}
 
@@ -367,7 +367,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 	@Override
 	public void postRunnable(Runnable runnable) {
-		currentWindow.postRenderThreadRunnable(runnable);
+		__post_render(currentWindow, runnable);
 	}
 
 	@Override
@@ -377,12 +377,12 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 	@Override
 	public void addLifecycleListener(LifecycleListener listener) {
-		postRenderThreadRunnable(() -> lifecycleListeners.add(listener));
+		__post_render(currentWindow, () -> lifecycleListeners.add(listener));
 	}
 
 	@Override
 	public void removeLifecycleListener(LifecycleListener listener) {
-		postRenderThreadRunnable(() -> lifecycleListeners.removeValue(listener, true));
+		__post_render(currentWindow, () -> lifecycleListeners.removeValue(listener, true));
 	}
 
 	/**
@@ -394,20 +394,15 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		Lwjgl3Window window = new Lwjgl3Window(listener, appConfig);
 
 		// delay window creation until next frame, so we don't conflict with GL contexts
-		postRenderThreadRunnable(() -> {
-			try {
-				long windowHandle = postMainThreadRunnable(() -> {
-					return window.createWindow(windows.get(0).getWindowHandle());
-				});
-				if (windowHandle == 0) {
-					throw new GdxRuntimeException("Failed to create GLFW window.");
-				}
-				window.completeWindow(windowHandle);
-				synchronized (windows) {
-					windows.add(window);
-				}
-			} catch (InterruptedException e) {
-				throw new GdxRuntimeException("Failed to create window.", e);
+		__post_render(() -> {
+			long sharedContext = windows.get(0).getWindowHandle();
+			long windowHandle = __call_main(0L, nil -> window.createWindow(sharedContext));
+			if (windowHandle == 0) {
+				throw new GdxRuntimeException("Failed to create GLFW window.");
+			}
+			window.completeWindow(windowHandle);
+			synchronized (windows) {
+				windows.add(window);
 			}
 		});
 

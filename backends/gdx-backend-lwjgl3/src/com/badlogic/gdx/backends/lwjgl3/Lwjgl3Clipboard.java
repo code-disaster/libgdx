@@ -17,8 +17,10 @@
 package com.badlogic.gdx.backends.lwjgl3;
 
 import com.badlogic.gdx.utils.Clipboard;
+import org.lwjgl.glfw.GLFW;
 
-import static org.lwjgl.glfw.GLFW.glfwGetClipboardString;
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__call_main;
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_main;
 import static org.lwjgl.glfw.GLFW.glfwSetClipboardString;
 
 /**
@@ -38,16 +40,12 @@ class Lwjgl3Clipboard implements Clipboard {
 
 	@Override
 	public String getContents() {
-		try {
-			return window.postMainThreadRunnable(() -> glfwGetClipboardString(window.getWindowHandle()));
-		} catch (InterruptedException e) {
-			return "";
-		}
+		return __call_main(window, "", GLFW::glfwGetClipboardString);
 	}
 
 	@Override
 	public void setContents(String content) {
-		window.postMainThreadRunnable(() -> glfwSetClipboardString(window.getWindowHandle(), content));
+		__post_main(window, context -> glfwSetClipboardString(context, content));
 	}
 
 }

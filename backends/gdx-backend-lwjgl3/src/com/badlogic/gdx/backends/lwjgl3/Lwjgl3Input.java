@@ -23,6 +23,7 @@ import org.lwjgl.glfw.*;
 import java.util.Arrays;
 
 import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration.HdpiMode;
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.*;
 import static org.lwjgl.glfw.GLFW.*;
 
 public class Lwjgl3Input implements Input, Disposable {
@@ -47,7 +48,7 @@ public class Lwjgl3Input implements Input, Disposable {
 		@Override
 		public void invoke(long handle, int key, int scancode, int action, int mods) {
 			final int gdxKey = toGdxKeyCode(key);
-			window.postRenderThreadRunnable(() -> {
+			__post_render(handle, () -> {
 				switch (action) {
 					case GLFW_PRESS:
 						keysPressed++;
@@ -88,7 +89,7 @@ public class Lwjgl3Input implements Input, Disposable {
 			if ((codepoint & 0xff00) == 0xf700) {
 				return;
 			}
-			window.postRenderThreadRunnable(() -> {
+			__post_render(handle, () -> {
 				lastCharacter = (char) codepoint;
 				window.requestRendering();
 				eventQueue.keyTyped(lastCharacter);
@@ -99,7 +100,7 @@ public class Lwjgl3Input implements Input, Disposable {
 	private final GLFWScrollCallback scrollCallback = new GLFWScrollCallback() {
 		@Override
 		public void invoke(long handle, double xoffset, double yoffset) {
-			window.postRenderThreadRunnable(() -> {
+			__post_render(handle, () -> {
 				window.requestRendering();
 				eventQueue.scrolled((int) -Math.signum(yoffset));
 			});
@@ -120,7 +121,7 @@ public class Lwjgl3Input implements Input, Disposable {
 			final int deltaY = (int) ((y - logicalMouseY) * yScale);
 			final int mouseX = logicalMouseX = (int) (x * xScale);
 			final int mouseY = logicalMouseY = (int) (y * yScale);
-			window.postRenderThreadRunnable(() -> {
+			__post_render(handle, () -> {
 				Lwjgl3Input.this.deltaX = deltaX;
 				Lwjgl3Input.this.deltaY = deltaY;
 				Lwjgl3Input.this.mouseX = mouseX;
@@ -142,7 +143,7 @@ public class Lwjgl3Input implements Input, Disposable {
 			if (button != -1 && gdxButton == -1) {
 				return;
 			}
-			window.postRenderThreadRunnable(() -> {
+			__post_render(handle, () -> {
 				if (action == GLFW_PRESS) {
 					mousePressed++;
 					pressedButtons |= (1L << gdxButton);
@@ -423,7 +424,7 @@ public class Lwjgl3Input implements Input, Disposable {
 	@Override
 	public void setCursorCatched(boolean catched) {
 		this.catched = catched;
-		window.postMainThreadRunnable(() -> glfwSetInputMode(window.getWindowHandle(), GLFW_CURSOR,
+		__post_main(window, context -> glfwSetInputMode(context, GLFW_CURSOR,
 				catched ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL));
 	}
 
@@ -439,7 +440,7 @@ public class Lwjgl3Input implements Input, Disposable {
 		float yScale = doScale ? window.logicalHeight / (float) window.backBufferHeight : 1.0f;
 		final int posX = (int) (x * xScale);
 		final int posY = (int) (y * yScale);
-		window.postMainThreadRunnable(() -> glfwSetCursorPos(window.getWindowHandle(), posX, posY));
+		__post_main(window, context -> glfwSetCursorPos(context, posX, posY));
 	}
 
 	@Override

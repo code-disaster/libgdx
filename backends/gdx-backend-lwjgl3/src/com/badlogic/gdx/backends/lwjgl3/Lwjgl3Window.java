@@ -22,7 +22,8 @@ import com.badlogic.gdx.graphics.glutils.GLVersion;
 import com.badlogic.gdx.utils.*;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.*;
-import org.lwjgl.opengl.*;
+import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.IntBuffer;
@@ -30,7 +31,6 @@ import java.nio.IntBuffer;
 import static com.badlogic.gdx.Graphics.BufferFormat;
 import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration.HdpiMode;
 import static org.lwjgl.glfw.GLFW.*;
-import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
 import static org.lwjgl.opengl.GL11.*;
 
 public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
@@ -55,7 +55,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	private final GLFWWindowFocusCallback focusCallback = new GLFWWindowFocusCallback() {
 		@Override
 		public void invoke(long window, boolean focused) {
-			postRenderThreadRunnable(() -> {
+			__post_render(window, () -> {
 				if (focused) {
 					windowListener.focusGained();
 				} else {
@@ -68,7 +68,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	private final GLFWWindowIconifyCallback iconifyCallback = new GLFWWindowIconifyCallback() {
 		@Override
 		public void invoke(long window, boolean iconified) {
-			postRenderThreadRunnable(() -> {
+			__post_render(window, () -> {
 				windowListener.iconified(iconified);
 				Lwjgl3Window.this.iconified = iconified;
 				if (iconified) {
@@ -83,9 +83,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	private final GLFWWindowMaximizeCallback maximizeCallback = new GLFWWindowMaximizeCallback() {
 		@Override
 		public void invoke(long window, boolean maximized) {
-			postRenderThreadRunnable(() -> {
-				windowListener.maximized(maximized);
-			});
+			__post_render(window, () -> windowListener.maximized(maximized));
 		}
 	};
 
@@ -93,9 +91,9 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		@Override
 		public void invoke(long window) {
 			glfwSetWindowShouldClose(window, false);
-			postRenderThreadRunnable(() -> {
+			__post_render(window, () -> {
 				if (windowListener.closeRequested()) {
-					glfwSetWindowShouldClose(window, true);
+					glfwSetWindowShouldClose(handle, true);
 				}
 			});
 		}
@@ -108,16 +106,14 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 			for (int i = 0; i < count; i++) {
 				files[i] = getName(names, i);
 			}
-			postRenderThreadRunnable(() -> {
-				windowListener.filesDropped(files);
-			});
+			__post_render(window, () -> windowListener.filesDropped(files));
 		}
 	};
 
 	private final GLFWWindowRefreshCallback refreshCallback = new GLFWWindowRefreshCallback() {
 		@Override
 		public void invoke(long window) {
-			postRenderThreadRunnable(() -> {
+			__post_render(window, () -> {
 				windowListener.refreshRequested();
 				Lwjgl3Window.this.requestRendering();
 			});
@@ -136,7 +132,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 				glfwGetWindowSize(window, x, y);
 				final int logicalWidth = x.get(0);
 				final int logicalHeight = y.get(0);
-				postRenderThreadRunnable(() -> {
+				__post_render(window, () -> {
 					Lwjgl3Window.this.backBufferWidth = backBufferWidth;
 					Lwjgl3Window.this.backBufferHeight = backBufferHeight;
 					Lwjgl3Window.this.logicalWidth = logicalWidth;
@@ -152,7 +148,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	private final GLFWWindowPosCallback positionCallback = new GLFWWindowPosCallback() {
 		@Override
 		public void invoke(long window, int xpos, int ypos) {
-			postRenderThreadRunnable(() -> {
+			__post_render(window, () -> {
 				positionX = xpos;
 				positionY = ypos;
 			});
@@ -172,6 +168,8 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		// Window creation and installation of callback handlers must be done in the main thread.
 		// This is a blocking call to keep synchronization simple.
 		long handle = createGlfwWindow(sharedContext);
+		registerContext(handle);
+
 		glfwSetWindowFocusCallback(handle, focusCallback);
 		glfwSetWindowIconifyCallback(handle, iconifyCallback);
 		glfwSetWindowMaximizeCallback(handle, maximizeCallback);
@@ -238,6 +236,8 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		refreshCallback.free();
 		resizeCallback.free();
 		positionCallback.free();
+
+		unregisterContext(handle);
 		glfwDestroyWindow(handle);
 	}
 
@@ -289,7 +289,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		graphics.makeCurrent(this);
 		Gdx.input = input;
 
-		glfwMakeContextCurrent(handle);
+		__context_render(handle);
 
 		if (GL11.GL_NO_ERROR != GL11.glGetError()) {
 			int x = 0;
@@ -329,7 +329,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	 * the first monitor in the virtual surface.
 	 **/
 	public void setPosition(int x, int y) {
-		postMainThreadRunnable(() -> glfwSetWindowPos(handle, x, y));
+		__post_main(handle, context -> glfwSetWindowPos(context, x, y));
 	}
 
 	/**
@@ -363,11 +363,11 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	 * call their {@link ApplicationListener}
 	 */
 	public void setVisible(boolean visible) {
-		postMainThreadRunnable(() -> {
+		__post_main(handle, context -> {
 			if (visible) {
-				glfwShowWindow(handle);
+				glfwShowWindow(context);
 			} else {
-				glfwHideWindow(handle);
+				glfwHideWindow(context);
 			}
 		});
 	}
@@ -385,86 +385,78 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	 * their {@link ApplicationListener} until the window is restored.
 	 */
 	public void iconifyWindow() {
-		postMainThreadRunnable(() -> glfwIconifyWindow(handle));
+		__post_main(handle, GLFW::glfwIconifyWindow);
 	}
 
 	/**
 	 * De-minimizes (de-iconifies) and de-maximizes the window.
 	 */
 	public void restoreWindow() {
-		postMainThreadRunnable(() -> glfwRestoreWindow(handle));
+		__post_main(handle, GLFW::glfwRestoreWindow);
 	}
 
 	/**
 	 * Maximizes the window.
 	 */
 	public void maximizeWindow() {
-		postMainThreadRunnable(() -> glfwMaximizeWindow(handle));
+		__post_main(handle, GLFW::glfwMaximizeWindow);
 	}
 
 	void setTitle(CharSequence title) {
-		postMainThreadRunnable(() -> glfwSetWindowTitle(handle, title));
+		__post_main(handle, context -> glfwSetWindowTitle(context, title));
 	}
 
 	void setUndecorated(boolean undecorated) {
 		config.setDecorated(!undecorated);
-		postMainThreadRunnable(() -> glfwSetWindowAttrib(handle, GLFW_DECORATED, undecorated ? GLFW_FALSE : GLFW_TRUE));
+		__post_main(handle, context -> glfwSetWindowAttrib(context,
+				GLFW_DECORATED, undecorated ? GLFW_FALSE : GLFW_TRUE));
 	}
 
 	void setResizable(boolean resizable) {
 		config.setResizable(resizable);
-		postMainThreadRunnable(() -> glfwSetWindowAttrib(handle, GLFW_RESIZABLE, resizable ? GLFW_TRUE : GLFW_FALSE));
+		__post_main(handle, context -> glfwSetWindowAttrib(context,
+				GLFW_RESIZABLE, resizable ? GLFW_TRUE : GLFW_FALSE));
 	}
 
 	boolean setFullscreenMode(Lwjgl3DisplayMode displayMode) {
-		try {
-			input.reset();
-			final int x = positionX;
-			final int y = positionY;
-			return postMainThreadRunnable(() -> {
-				if (config.fullscreenMode == null) {
-					config.setWindowPosition(x, y);
-					glfwSetWindowMonitor(handle, displayMode.getMonitorHandle(),
-							0, 0, displayMode.width, displayMode.height, displayMode.refreshRate);
+		input.reset();
+		final int x = positionX;
+		final int y = positionY;
+		return __call_main(this, false, context -> {
+			if (config.fullscreenMode == null) {
+				config.setWindowPosition(x, y);
+				glfwSetWindowMonitor(context, displayMode.getMonitorHandle(),
+						0, 0, displayMode.width, displayMode.height, displayMode.refreshRate);
+			} else {
+				Lwjgl3DisplayMode currentMode = config.fullscreenMode;
+				if (currentMode.getMonitorHandle() == displayMode.getMonitorHandle()
+						&& currentMode.refreshRate == displayMode.refreshRate) {
+					// same monitor and refresh rate
+					glfwSetWindowSize(context, displayMode.width, displayMode.height);
 				} else {
-					Lwjgl3DisplayMode currentMode = config.fullscreenMode;
-					if (currentMode.getMonitorHandle() == displayMode.getMonitorHandle()
-							&& currentMode.refreshRate == displayMode.refreshRate) {
-						// same monitor and refresh rate
-						glfwSetWindowSize(handle, displayMode.width, displayMode.height);
-					} else {
-						// different monitor and/or refresh rate
-						glfwSetWindowMonitor(handle, displayMode.getMonitorHandle(),
-								0, 0, displayMode.width, displayMode.height, displayMode.refreshRate);
-					}
+					// different monitor and/or refresh rate
+					glfwSetWindowMonitor(context, displayMode.getMonitorHandle(),
+							0, 0, displayMode.width, displayMode.height, displayMode.refreshRate);
 				}
-				return true;
-			});
-		} catch (InterruptedException e) {
-			Gdx.app.error("Lwjgl3Application", "Exception while switching to fullscreen mode", e);
-			return false;
-		}
+			}
+			return true;
+		});
 	}
 
 	boolean setWindowedMode(int width, int height) {
-		try {
-			input.reset();
-			final int x = positionX;
-			final int y = positionY;
-			return postMainThreadRunnable(() -> {
-				if (config.fullscreenMode == null) {
-					glfwSetWindowSize(handle, width, height);
-				} else {
-					glfwSetWindowMonitor(handle, 0, x, y, width, height, GLFW_DONT_CARE);
-					config.fullscreenMode = null;
-				}
-				config.setWindowedMode(width, height);
-				return true;
-			});
-		} catch (InterruptedException e) {
-			Gdx.app.error("Lwjgl3Application", "Exception while switching to windowed mode", e);
-			return false;
-		}
+		input.reset();
+		final int x = positionX;
+		final int y = positionY;
+		return __call_main(this, false, context -> {
+			if (config.fullscreenMode == null) {
+				glfwSetWindowSize(context, width, height);
+			} else {
+				glfwSetWindowMonitor(context, 0, x, y, width, height, GLFW_DONT_CARE);
+				config.fullscreenMode = null;
+			}
+			config.setWindowedMode(width, height);
+			return true;
+		});
 	}
 
 	boolean isFullscreen() {
@@ -481,14 +473,10 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	 * @see GLFW#glfwSetWindowIcon(long, GLFWImage.Buffer)
 	 */
 	public void setIcon(Pixmap... images) {
-		try {
-			postMainThreadRunnable(() -> {
-				setIcon(handle, images);
-				return null;
-			});
-		} catch (InterruptedException e) {
-			Gdx.app.error("Lwjgl3Application", "Exception while setting window icons", e);
-		}
+		__call_main(this, null, context -> {
+			setIcon(context, images);
+			return null;
+		});
 	}
 
 	private void setIcon(long windowHandle, String[] imagePaths, Files.FileType imageFileType) {
@@ -533,7 +521,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	 * or not resizable, these limits are ignored. Use -1 to indicate an unrestricted dimension.
 	 */
 	public void setSizeLimits(int minWidth, int minHeight, int maxWidth, int maxHeight) {
-		postMainThreadRunnable(() -> setSizeLimits(handle, minWidth, minHeight, maxWidth, maxHeight));
+		__post_main(handle, context -> setSizeLimits(context, minWidth, minHeight, maxWidth, maxHeight));
 	}
 
 	private static void setSizeLimits(long windowHandle, int minWidth, int minHeight, int maxWidth, int maxHeight) {
@@ -619,7 +607,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	 * This function completes window creation by setting up the GL context. It is called from the render thread.
 	 */
 	private void finalizeGLFWWindow(long windowHandle) {
-		glfwMakeContextCurrent(windowHandle);
+		__context_render(windowHandle);
 		glfwSwapInterval(config.vSyncEnabled ? 1 : 0);
 
 		GL.createCapabilities();

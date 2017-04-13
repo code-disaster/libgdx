@@ -66,24 +66,28 @@ public class Lwjgl3Cursor implements Cursor {
 					return cursor;
 				}
 			});
+			if (handle == 0L) {
+				Gdx.app.log("Lwjgl3Application", "Failed to create cursor");
+			}
 		});
-		if (handle == 0L) {
-			Gdx.app.log("Lwjgl3Application", "Failed to create cursor");
-		}
 	}
 
 	@Override
 	public void dispose() {
-		if (handle != 0L) {
-			__post_main(window, context -> {
-				glfwDestroyCursor(handle);
-				handle = 0L;
-			});
-		}
+		__post_render(window, () -> {
+			if (handle != 0L) {
+				handle = __call_main(window, 0L, context -> {
+					glfwDestroyCursor(handle);
+					return 0L;
+				});
+			}
+		});
 	}
 
 	void setCursor() {
-		__post_main(window, context -> glfwSetCursor(context, handle));
+		__post_render(window, () -> {
+			__post_main(window, context -> glfwSetCursor(context, handle));
+		});
 	}
 
 	/**

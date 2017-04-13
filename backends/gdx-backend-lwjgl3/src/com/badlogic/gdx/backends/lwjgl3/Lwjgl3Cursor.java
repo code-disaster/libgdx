@@ -39,7 +39,6 @@ import static org.lwjgl.glfw.GLFW.*;
 public class Lwjgl3Cursor implements Cursor {
 
 	private final Lwjgl3Window window;
-	private Pixmap pixmap;
 	private volatile long handle = 0L;
 
 	private static final IntMap<Long> systemCursors = new IntMap<>();
@@ -51,14 +50,16 @@ public class Lwjgl3Cursor implements Cursor {
 	 */
 	Lwjgl3Cursor(Lwjgl3Window window, Pixmap pixmap, int xHotspot, int yHotspot) {
 		this.window = window;
-		copyPixmap(pixmap);
+		final Pixmap cursor = copyPixmap(pixmap);
 		window.postMainThreadRunnable(() -> {
 			try (MemoryStack stack = MemoryStack.stackPush()) {
 				GLFWImage image = GLFWImage.callocStack(stack);
-				image.width(this.pixmap.getWidth());
-				image.height(this.pixmap.getHeight());
-				image.pixels(this.pixmap.getPixels());
-				handle = glfwCreateCursor(image, xHotspot, yHotspot);
+				image.width(cursor.getWidth());
+				image.height(cursor.getHeight());
+				image.pixels(cursor.getPixels());
+				glfwMakeContextCurrent(window.getWindowHandle());
+				this.handle = glfwCreateCursor(image, xHotspot, yHotspot);
+				cursor.dispose();
 			}
 		});
 	}
@@ -71,10 +72,6 @@ public class Lwjgl3Cursor implements Cursor {
 				handle = 0L;
 			});
 		}
-
-		if (pixmap != null) {
-			pixmap.dispose();
-		}
 	}
 
 	void setCursor() {
@@ -84,13 +81,14 @@ public class Lwjgl3Cursor implements Cursor {
 	/**
 	 * Creates a copy of the source pixmap. This enforces RGBA8888 format and a power-of-two size, and
 	 * ensures that the copy is available for deferred calls on the main thread, even when the application
-	 * decides to dispose the source pixmap right after cursor creation.
+	 * decides to dispose the source pixmap right after the call to {@link #Lwjgl3Cursor}.
 	 */
-	private void copyPixmap(Pixmap pixmap) {
+	private static Pixmap copyPixmap(Pixmap pixmap) {
 		int widht = MathUtils.nextPowerOfTwo(pixmap.getWidth());
 		int height = MathUtils.nextPowerOfTwo(pixmap.getHeight());
-		this.pixmap = new Pixmap(widht, height, Pixmap.Format.RGBA8888);
-		this.pixmap.drawPixmap(pixmap, 0, 0);
+		Pixmap cursor = new Pixmap(widht, height, Pixmap.Format.RGBA8888);
+		cursor.drawPixmap(pixmap, 0, 0);
+		return cursor;
 	}
 
 	static void setSystemCursor(Lwjgl3Window window, SystemCursor cursor) {

@@ -22,7 +22,7 @@ import com.badlogic.gdx.graphics.glutils.GLVersion;
 import com.badlogic.gdx.utils.*;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.*;
-import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.*;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.IntBuffer;
@@ -290,12 +290,15 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		Gdx.input = input;
 
 		glfwMakeContextCurrent(handle);
+
+		if (GL11.GL_NO_ERROR != GL11.glGetError()) {
+			int x = 0;
+		}
 	}
 
-	boolean update() {
+	boolean update(boolean shouldRender) {
 
-		int numRunnablesExecuted = executeRenderThreadRunnables();
-		boolean shouldRender = numRunnablesExecuted > 0 || continuous;
+		shouldRender |= continuous;
 
 		if (!iconified) {
 			input.update();
@@ -558,8 +561,6 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 			glfwWindowHint(GLFW_STENCIL_BITS, config.stencil);
 			glfwWindowHint(GLFW_DEPTH_BITS, config.depth);
 			glfwWindowHint(GLFW_SAMPLES, config.samples);
-		} else {
-			glfwMakeContextCurrent(0L);
 		}
 
 		if (config.useGL30) {

@@ -93,6 +93,9 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			while (!shouldExit) {
 				glfwWaitEventsTimeout(1.0);
 				executeMainThreadRunnables();
+				for (int i = 0; i < windows.size; i++) {
+					windows.get(i).executeMainThreadRunnables();
+				}
 				shouldExit = windows.size == 0 || exceptionCaught;
 			}
 

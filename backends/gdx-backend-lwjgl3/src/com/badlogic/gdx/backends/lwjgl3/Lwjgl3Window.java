@@ -137,11 +137,12 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 				final int logicalWidth = x.get(0);
 				final int logicalHeight = y.get(0);
 				postRenderThreadRunnable(() -> {
-					listener.resize(width, height);
 					Lwjgl3Window.this.backBufferWidth = backBufferWidth;
 					Lwjgl3Window.this.backBufferHeight = backBufferHeight;
 					Lwjgl3Window.this.logicalWidth = logicalWidth;
 					Lwjgl3Window.this.logicalHeight = logicalHeight;
+					// use getters to pass size based on HdpiMode
+					listener.resize(getWidth(), getHeight());
 					// TODO: old version calls glViewport() and glfwSwapBuffers()
 				});
 			}

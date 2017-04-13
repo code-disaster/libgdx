@@ -16,31 +16,19 @@
 
 package com.badlogic.gdx.backends.lwjgl3;
 
-import com.badlogic.gdx.utils.Clipboard;
+import static com.badlogic.gdx.Graphics.DisplayMode;
 
-import static org.lwjgl.glfw.GLFW.glfwGetClipboardString;
-import static org.lwjgl.glfw.GLFW.glfwSetClipboardString;
+public class Lwjgl3DisplayMode extends DisplayMode {
 
-class Lwjgl3Clipboard2 implements Clipboard {
+	private final Lwjgl3Monitor monitor;
 
-	private final Lwjgl3Window2 window;
-
-	Lwjgl3Clipboard2(Lwjgl3Window2 window) {
-		this.window = window;
+	Lwjgl3DisplayMode(Lwjgl3Monitor monitor, int width, int height, int refreshRate, int bitsPerPixel) {
+		super(width, height, refreshRate, bitsPerPixel);
+		this.monitor = monitor;
 	}
 
-	@Override
-	public String getContents() {
-		try {
-			return window.postMainThreadRunnable(() -> glfwGetClipboardString(window.getWindowHandle()));
-		} catch (InterruptedException e) {
-			return "";
-		}
-	}
-
-	@Override
-	public void setContents(String content) {
-		window.postMainThreadRunnable(() -> glfwSetClipboardString(window.getWindowHandle(), content));
+	public long getMonitorHandle() {
+		return monitor.getMonitorHandle();
 	}
 
 }

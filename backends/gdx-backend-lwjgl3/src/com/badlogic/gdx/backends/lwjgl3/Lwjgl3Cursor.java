@@ -1,12 +1,12 @@
 /*******************************************************************************
  * Copyright 2011 See AUTHORS file.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,117 +16,123 @@
 
 package com.badlogic.gdx.backends.lwjgl3;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWImage;
-
+import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.graphics.Cursor;
 import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.badlogic.gdx.utils.IntMap;
+import org.lwjgl.glfw.GLFWImage;
+import org.lwjgl.system.MemoryStack;
 
+import static org.lwjgl.glfw.GLFW.*;
+
+/**
+ * {@link Cursor} implementation using GLFW functions.
+ * <p>
+ * Contrary to previous implementations, no additional bookkeeping is done. Remaining cursors are destroyed on
+ * {@link org.lwjgl.glfw.GLFW#glfwTerminate}, but to avoid leaking memory, the user application should ensure
+ * proper resource cleanup.
+ * <p>
+ * All available system cursors are created at startup and shared between windows.
+ */
 public class Lwjgl3Cursor implements Cursor {
-	static final Array<Lwjgl3Cursor> cursors = new Array<Lwjgl3Cursor>();
-	static final Map<SystemCursor, Long> systemCursors = new HashMap<SystemCursor, Long>();
 
-	final Lwjgl3Window window;
-	Pixmap pixmapCopy;
-	GLFWImage glfwImage;
-	final long glfwCursor;
+	private final Lwjgl3Window window;
+	private Pixmap pixmap;
+	private volatile long handle = 0L;
 
+	private static final IntMap<Long> systemCursors = new IntMap<>();
+
+	/**
+	 * This function posts a {@link Runnable} to the main thread, which means it doesn't take effect immediately.
+	 * Still, applications are safe to follow up with a call to {@link Graphics#setCursor(Cursor)}, as this is done
+	 * through the same mechanism, which ensures the correct call order.
+	 */
 	Lwjgl3Cursor(Lwjgl3Window window, Pixmap pixmap, int xHotspot, int yHotspot) {
 		this.window = window;
-		if (pixmap.getFormat() != Pixmap.Format.RGBA8888) {
-			throw new GdxRuntimeException("Cursor image pixmap is not in RGBA8888 format.");
-		}
-
-		if ((pixmap.getWidth() & (pixmap.getWidth() - 1)) != 0) {
-			throw new GdxRuntimeException(
-					"Cursor image pixmap width of " + pixmap.getWidth() + " is not a power-of-two greater than zero.");
-		}
-
-		if ((pixmap.getHeight() & (pixmap.getHeight() - 1)) != 0) {
-			throw new GdxRuntimeException("Cursor image pixmap height of " + pixmap.getHeight()
-					+ " is not a power-of-two greater than zero.");
-		}
-
-		if (xHotspot < 0 || xHotspot >= pixmap.getWidth()) {
-			throw new GdxRuntimeException("xHotspot coordinate of " + xHotspot
-					+ " is not within image width bounds: [0, " + pixmap.getWidth() + ").");
-		}
-
-		if (yHotspot < 0 || yHotspot >= pixmap.getHeight()) {
-			throw new GdxRuntimeException("yHotspot coordinate of " + yHotspot
-					+ " is not within image height bounds: [0, " + pixmap.getHeight() + ").");
-		}
-
-		this.pixmapCopy = new Pixmap(pixmap.getWidth(), pixmap.getHeight(), Pixmap.Format.RGBA8888);
-		this.pixmapCopy.drawPixmap(pixmap, 0, 0);
-
-		glfwImage = GLFWImage.malloc();
-		glfwImage.width(pixmapCopy.getWidth());
-		glfwImage.height(pixmapCopy.getHeight());
-		glfwImage.pixels(pixmapCopy.getPixels());
-		glfwCursor = GLFW.glfwCreateCursor(glfwImage, xHotspot, yHotspot);
-		cursors.add(this);
+		copyPixmap(pixmap);
+		window.postMainThreadRunnable(() -> {
+			try (MemoryStack stack = MemoryStack.stackPush()) {
+				GLFWImage image = GLFWImage.callocStack(stack);
+				image.width(this.pixmap.getWidth());
+				image.height(this.pixmap.getHeight());
+				image.pixels(this.pixmap.getPixels());
+				handle = glfwCreateCursor(image, xHotspot, yHotspot);
+			}
+		});
 	}
 
 	@Override
 	public void dispose() {
-		if (pixmapCopy == null) {
-			throw new GdxRuntimeException("Cursor already disposed");
+		if (handle != 0L) {
+			window.postMainThreadRunnable(() -> {
+				glfwDestroyCursor(handle);
+				handle = 0L;
+			});
 		}
-		cursors.removeValue(this, true);
-		pixmapCopy.dispose();
-		pixmapCopy = null;
-		glfwImage.free();
-		GLFW.glfwDestroyCursor(glfwCursor);
+
+		if (pixmap != null) {
+			pixmap.dispose();
+		}
 	}
 
-	static void dispose(Lwjgl3Window window) {
-		for (int i = cursors.size - 1; i >= 0; i--) {
-			Lwjgl3Cursor cursor = cursors.get(i);
-			if (cursor.window.equals(window)) {
-				cursors.removeIndex(i).dispose();
+	void setCursor() {
+		window.postMainThreadRunnable(() -> glfwSetCursor(window.getWindowHandle(), handle));
+	}
+
+	/**
+	 * Creates a copy of the source pixmap. This enforces RGBA8888 format and a power-of-two size, and
+	 * ensures that the copy is available for deferred calls on the main thread, even when the application
+	 * decides to dispose the source pixmap right after cursor creation.
+	 */
+	private void copyPixmap(Pixmap pixmap) {
+		int widht = MathUtils.nextPowerOfTwo(pixmap.getWidth());
+		int height = MathUtils.nextPowerOfTwo(pixmap.getHeight());
+		this.pixmap = new Pixmap(widht, height, Pixmap.Format.RGBA8888);
+		this.pixmap.drawPixmap(pixmap, 0, 0);
+	}
+
+	static void setSystemCursor(Lwjgl3Window window, SystemCursor cursor) {
+		window.postMainThreadRunnable(() -> glfwSetCursor(
+				window.getWindowHandle(), systemCursors.get(cursor.ordinal())));
+	}
+
+	static void createSystemCursors() {
+		for (SystemCursor cursor : SystemCursor.values()) {
+			int shape;
+			switch (cursor) {
+				case Arrow:
+					shape = GLFW_ARROW_CURSOR;
+					break;
+				case Ibeam:
+					shape = GLFW_IBEAM_CURSOR;
+					break;
+				case Crosshair:
+					shape = GLFW_CROSSHAIR_CURSOR;
+					break;
+				case Hand:
+					shape = GLFW_HAND_CURSOR;
+					break;
+				case HorizontalResize:
+					shape = GLFW_HRESIZE_CURSOR;
+					break;
+				case VerticalResize:
+					shape = GLFW_VRESIZE_CURSOR;
+					break;
+				default:
+					throw new GdxRuntimeException("System cursor not implemented: " + cursor.name());
 			}
+			long handle = glfwCreateStandardCursor(shape);
+			systemCursors.put(cursor.ordinal(), handle);
 		}
 	}
 
 	static void disposeSystemCursors() {
 		for (long systemCursor : systemCursors.values()) {
-			GLFW.glfwDestroyCursor(systemCursor);
+			glfwDestroyCursor(systemCursor);
 		}
 		systemCursors.clear();
 	}
 
-	static void setSystemCursor(long windowHandle, SystemCursor systemCursor) {
-		Long glfwCursor = systemCursors.get(systemCursor);
-		if (glfwCursor == null) {
-			long handle = 0;
-			if (systemCursor == SystemCursor.Arrow) {
-				handle = GLFW.glfwCreateStandardCursor(GLFW.GLFW_ARROW_CURSOR);
-			} else if (systemCursor == SystemCursor.Crosshair) {
-				handle = GLFW.glfwCreateStandardCursor(GLFW.GLFW_CROSSHAIR_CURSOR);
-			} else if (systemCursor == SystemCursor.Hand) {
-				handle = GLFW.glfwCreateStandardCursor(GLFW.GLFW_HAND_CURSOR);
-			} else if (systemCursor == SystemCursor.HorizontalResize) {
-				handle = GLFW.glfwCreateStandardCursor(GLFW.GLFW_HRESIZE_CURSOR);
-			} else if (systemCursor == SystemCursor.VerticalResize) {
-				handle = GLFW.glfwCreateStandardCursor(GLFW.GLFW_VRESIZE_CURSOR);
-			} else if (systemCursor == SystemCursor.Ibeam) {
- 				handle = GLFW.glfwCreateStandardCursor(GLFW.GLFW_IBEAM_CURSOR);
-  			} else {
-				throw new GdxRuntimeException("Unknown system cursor " + systemCursor);
-			}
-
-			if (handle == 0) {
-				return;
-			}
-			glfwCursor = handle;
-			systemCursors.put(systemCursor, glfwCursor);
-		}
-		GLFW.glfwSetCursor(windowHandle, glfwCursor);
-	}
 }

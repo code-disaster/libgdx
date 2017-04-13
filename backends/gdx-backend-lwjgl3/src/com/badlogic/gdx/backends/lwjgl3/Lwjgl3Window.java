@@ -92,9 +92,10 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	private final GLFWWindowCloseCallback closeCallback = new GLFWWindowCloseCallback() {
 		@Override
 		public void invoke(long window) {
+			glfwSetWindowShouldClose(window, false);
 			postRenderThreadRunnable(() -> {
 				if (windowListener.closeRequested()) {
-					glfwSetWindowShouldClose(window, false);
+					glfwSetWindowShouldClose(window, true);
 				}
 			});
 		}
@@ -226,30 +227,24 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		listener.resize(getWidth(), getHeight());
 	}
 
+	void disposeWindow() {
+		input.dispose();
+		focusCallback.free();
+		iconifyCallback.free();
+		maximizeCallback.free();
+		closeCallback.free();
+		dropCallback.free();
+		refreshCallback.free();
+		resizeCallback.free();
+		positionCallback.free();
+		glfwDestroyWindow(handle);
+	}
+
 	@Override
 	public void dispose() {
 		makeCurrent();
 		listener.pause();
 		listener.dispose();
-		try {
-			// Destroying a window is again done with a blocking operation,
-			// so we can be safe to continue.
-			postMainThreadRunnable(() -> {
-				input.dispose();
-				focusCallback.free();
-				iconifyCallback.free();
-				maximizeCallback.free();
-				closeCallback.free();
-				dropCallback.free();
-				refreshCallback.free();
-				resizeCallback.free();
-				positionCallback.free();
-				glfwDestroyWindow(handle);
-				return null;
-			});
-		} catch (InterruptedException e) {
-			Gdx.app.error("Lwjgl3Application", "Exception while destroying window", e);
-		}
 	}
 
 	/**

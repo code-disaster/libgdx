@@ -195,6 +195,14 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			}
 			window.dispose();
 			windows.removeValue(window, true);
+			try {
+				postMainThreadRunnable(() -> {
+					window.disposeWindow();
+					return null;
+				});
+			} catch (InterruptedException e) {
+				error("Lwjgl3Application", "Exception while closing window.", e);
+			}
 		}
 	}
 

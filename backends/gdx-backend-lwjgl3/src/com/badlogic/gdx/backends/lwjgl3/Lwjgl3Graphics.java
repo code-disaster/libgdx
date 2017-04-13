@@ -34,7 +34,7 @@ public class Lwjgl3Graphics implements Graphics, Disposable {
 
 	private final GL20 gl20;
 	private final GL30 gl30;
-	private final GLVersion glVersion;
+	private GLVersion glVersion;
 
 	private long lastFrameTime = Long.MIN_VALUE;
 	private float deltaTime;
@@ -60,7 +60,6 @@ public class Lwjgl3Graphics implements Graphics, Disposable {
 		Gdx.gl30 = gl30;
 		Gdx.gl20 = gl20;
 		Gdx.gl = gl30 != null ? gl30 : gl20;
-		glVersion = buildGLVersion();
 	}
 
 	void update() {
@@ -158,6 +157,9 @@ public class Lwjgl3Graphics implements Graphics, Disposable {
 
 	@Override
 	public GLVersion getGLVersion() {
+		if (glVersion == null) {
+			glVersion = buildGLVersion();
+		}
 		return glVersion;
 	}
 

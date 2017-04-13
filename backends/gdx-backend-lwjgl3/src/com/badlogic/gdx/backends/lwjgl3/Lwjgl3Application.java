@@ -41,7 +41,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	private final ObjectMap<String, Preferences> preferences = new ObjectMap<>();
 
 	private final Thread renderThread;
-	private volatile boolean rendering = false;
+	private volatile boolean rendering = true;
 	private volatile boolean exceptionCaught = false;
 	private final Array<Lwjgl3Window> windows = new Array<>();
 	private Lwjgl3Window currentWindow;
@@ -51,7 +51,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	private ApplicationLogger applicationLogger;
 	private int logLevel = LOG_INFO;
 
-	private static GLFWErrorCallback errorCallback = GLFWErrorCallback.createPrint(System.err);
+	private static GLFWErrorCallback errorCallback;
 	private static Callback glDebugCallback;
 
 	public Lwjgl3Application(ApplicationListener listener, Lwjgl3ApplicationConfiguration config) {
@@ -75,6 +75,9 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 		Lwjgl3Cursor.createSystemCursors();
 
+		Lwjgl3Window primaryWindow = new Lwjgl3Window(listener, config);
+		windows.add(primaryWindow);
+
 		renderThread = new Thread(this::renderThreadFunction, "gdx-render");
 		renderThread.setUncaughtExceptionHandler(this::renderThreadExceptionHandler);
 		renderThread.start();
@@ -88,7 +91,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			boolean shouldExit = false;
 
 			while (!shouldExit) {
-				glfwWaitEvents();
+				glfwWaitEventsTimeout(1.0);
 				executeMainThreadRunnables();
 				shouldExit = windows.size == 0 || exceptionCaught;
 			}
@@ -117,8 +120,13 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 	private void renderThreadFunction() {
 
-		Lwjgl3Window primaryWindow = new Lwjgl3Window(listener, config, 0L);
-		windows.add(primaryWindow);
+		try {
+			Lwjgl3Window primaryWindow = windows.get(0);
+			long primaryWindowHandle = postMainThreadRunnable(() -> primaryWindow.createWindow(0L));
+			primaryWindow.completeWindow(primaryWindowHandle);
+		} catch (InterruptedException e) {
+			throw new GdxRuntimeException("Failed to create primary window.", e);
+		}
 
 		if (config.debug) {
 			glDebugCallback = GLUtil.setupDebugMessageCallback(config.debugStream);
@@ -349,7 +357,28 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	public Lwjgl3Window newWindow(ApplicationListener listener, Lwjgl3WindowConfiguration config) {
 		Lwjgl3ApplicationConfiguration appConfig = Lwjgl3ApplicationConfiguration.copy(this.config);
 		appConfig.setWindowConfiguration(config);
-		return new Lwjgl3Window(listener, appConfig, windows.get(0).getWindowHandle());
+		Lwjgl3Window window = new Lwjgl3Window(listener, appConfig);
+
+		// delay window creation until next frame, so we don't conflict with GL contexts
+		postRenderThreadRunnable(() -> {
+			try {
+				long windowHandle = postMainThreadRunnable(() -> {
+					long handle = window.createWindow(windows.get(0).getWindowHandle());
+					if (handle != 0L) {
+						windows.add(window);
+					}
+					return handle;
+				});
+				if (windowHandle == 0) {
+					throw new GdxRuntimeException("Failed to create GLFW window.");
+				}
+				window.completeWindow(windowHandle);
+			} catch (InterruptedException e) {
+				throw new GdxRuntimeException("Failed to create window.", e);
+			}
+		});
+
+		return window;
 	}
 
 	static void initializeGlfw() {

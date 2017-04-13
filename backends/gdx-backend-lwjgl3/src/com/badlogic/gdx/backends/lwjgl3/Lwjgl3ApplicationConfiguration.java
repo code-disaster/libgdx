@@ -26,6 +26,8 @@ import com.badlogic.gdx.graphics.glutils.HdpiUtils;
 
 import java.io.PrintStream;
 
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application.initializeGlfw;
+
 public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	boolean disableAudio = false;
 	int audioDeviceSimultaneousSources = 16;
@@ -227,6 +229,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	 * @return the currently active {@link DisplayMode} of the primary monitor
 	 */
 	public static DisplayMode getDisplayMode() {
+		initializeGlfw();
 		return Lwjgl3Graphics.primaryMonitor.getDisplayMode();
 	}
 	
@@ -234,6 +237,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	 * @return the currently active {@link DisplayMode} of the given monitor
 	 */
 	public static DisplayMode getDisplayMode(Monitor monitor) {
+		initializeGlfw();
 		return ((Lwjgl3Monitor) monitor).getDisplayMode();
 	}
 
@@ -241,6 +245,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	 * @return the available {@link DisplayMode}s of the primary monitor
 	 */
 	public static DisplayMode[] getDisplayModes() {
+		initializeGlfw();
 		return Lwjgl3Graphics.primaryMonitor.getDisplayModes();
 	}
 
@@ -248,6 +253,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	 * @return the available {@link DisplayMode}s of the given {@link Monitor}
 	 */
 	public static DisplayMode[] getDisplayModes(Monitor monitor) {
+		initializeGlfw();
 		return ((Lwjgl3Monitor) monitor).getDisplayModes();
 	}
 
@@ -255,6 +261,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	 * @return the primary {@link Monitor}
 	 */
 	public static Monitor getPrimaryMonitor() {
+		initializeGlfw();
 		return Lwjgl3Graphics.primaryMonitor;
 	}
 
@@ -262,6 +269,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	 * @return the connected {@link Monitor}s
 	 */
 	public static Monitor[] getMonitors() {
+		initializeGlfw();
 		return Lwjgl3Graphics.monitors;
 	}
 

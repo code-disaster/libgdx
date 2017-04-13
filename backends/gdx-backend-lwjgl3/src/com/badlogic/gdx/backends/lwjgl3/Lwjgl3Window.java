@@ -30,6 +30,7 @@ import java.nio.IntBuffer;
 import static com.badlogic.gdx.Graphics.BufferFormat;
 import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration.HdpiMode;
 import static org.lwjgl.glfw.GLFW.*;
+import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
 import static org.lwjgl.opengl.GL11.*;
 
 public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
@@ -46,7 +47,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	private boolean iconified = false;
 	boolean continuous = true;
 	private volatile boolean requestRendering = false;
-	final BufferFormat bufferFormat;
+	BufferFormat bufferFormat;
 	int backBufferWidth, backBufferHeight;
 	int logicalWidth, logicalHeight;
 	int positionX, positionY;
@@ -156,75 +157,78 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		}
 	};
 
-	Lwjgl3Window(ApplicationListener listener, Lwjgl3ApplicationConfiguration config, long sharedContext) {
+	Lwjgl3Window(ApplicationListener listener, Lwjgl3ApplicationConfiguration config) {
 		this.listener = listener;
 		this.config = config;
 		this.graphics = (Lwjgl3Graphics) Gdx.graphics;
 		this.input = new Lwjgl3Input(this);
 		this.clipboard = new Lwjgl3Clipboard(this);
 		setWindowListener(config.windowListener);
+	}
 
-		try {
-			// Window creation and installation of callback handlers must be done in the main thread.
-			// This is a blocking call to keep synchronization simple.
-			long windowHandle = postMainThreadRunnable(() -> {
-				long handle = createGlfwWindow(sharedContext);
-				glfwSetWindowFocusCallback(handle, focusCallback);
-				glfwSetWindowIconifyCallback(handle, iconifyCallback);
-				glfwSetWindowMaximizeCallback(handle, maximizeCallback);
-				glfwSetWindowCloseCallback(handle, closeCallback);
-				glfwSetDropCallback(handle, dropCallback);
-				glfwSetWindowRefreshCallback(handle, refreshCallback);
-				glfwSetFramebufferSizeCallback(handle, resizeCallback);
-				glfwSetWindowPosCallback(handle, positionCallback);
-				input.setupCallbacks(handle);
+	long createWindow(long sharedContext) {
+		// Window creation and installation of callback handlers must be done in the main thread.
+		// This is a blocking call to keep synchronization simple.
+		long handle = createGlfwWindow(sharedContext);
+		glfwSetWindowFocusCallback(handle, focusCallback);
+		glfwSetWindowIconifyCallback(handle, iconifyCallback);
+		glfwSetWindowMaximizeCallback(handle, maximizeCallback);
+		glfwSetWindowCloseCallback(handle, closeCallback);
+		glfwSetDropCallback(handle, dropCallback);
+		glfwSetWindowRefreshCallback(handle, refreshCallback);
+		glfwSetFramebufferSizeCallback(handle, resizeCallback);
+		glfwSetWindowPosCallback(handle, positionCallback);
+		input.setupCallbacks(handle);
 
-				// fill cached position/size data
-				// after this, they are only updated through callback handlers
-				try (MemoryStack stack = MemoryStack.stackPush()) {
-					IntBuffer x = stack.callocInt(1);
-					IntBuffer y = stack.callocInt(1);
-					glfwGetFramebufferSize(handle, x, y);
-					backBufferWidth = x.get(0);
-					backBufferHeight = y.get(0);
-					glfwGetWindowSize(handle, x, y);
-					logicalWidth = x.get(0);
-					logicalHeight = y.get(0);
-					glfwGetWindowPos(handle, x, y);
-					positionX = x.get(0);
-					positionY = y.get(0);
-				}
-
-				return handle;
-			});
-
-			finalizeGLFWWindow(windowHandle);
-
-			setVisible(config.initialVisible);
-
-			for (int i = 0; i < 2; i++) {
-				glClearColor(config.initialBackgroundColor.r, config.initialBackgroundColor.g,
-						config.initialBackgroundColor.b, config.initialBackgroundColor.a);
-				glClear(GL_COLOR_BUFFER_BIT);
-				glfwSwapBuffers(windowHandle);
-			}
-
-			handle = windowHandle;
-		} catch (InterruptedException e) {
-			throw new GdxRuntimeException("Failed to create GLFW window");
+		// fill cached position/size data
+		// after this, they are only updated through callback handlers
+		try (MemoryStack stack = MemoryStack.stackPush()) {
+			IntBuffer x = stack.callocInt(1);
+			IntBuffer y = stack.callocInt(1);
+			glfwGetFramebufferSize(handle, x, y);
+			backBufferWidth = x.get(0);
+			backBufferHeight = y.get(0);
+			glfwGetWindowSize(handle, x, y);
+			logicalWidth = x.get(0);
+			logicalHeight = y.get(0);
+			glfwGetWindowPos(handle, x, y);
+			positionX = x.get(0);
+			positionY = y.get(0);
 		}
 
-		windowListener.created(this);
+		if (config.initialVisible) {
+			glfwShowWindow(handle);
+		}
+
+		return handle;
+	}
+
+	void completeWindow(long windowHandle) {
+		finalizeGLFWWindow(windowHandle);
+
+		for (int i = 0; i < 2; i++) {
+			glClearColor(config.initialBackgroundColor.r, config.initialBackgroundColor.g,
+					config.initialBackgroundColor.b, config.initialBackgroundColor.a);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glfwSwapBuffers(windowHandle);
+		}
+
+		handle = windowHandle;
 
 		bufferFormat = new BufferFormat(config.r, config.g, config.b, config.a,
 				config.depth, config.stencil, config.samples, false);
 
-		this.listener.create();
-		this.listener.resize(getWidth(), getHeight());
+		makeCurrent();
+
+		windowListener.created(this);
+
+		listener.create();
+		listener.resize(getWidth(), getHeight());
 	}
 
 	@Override
 	public void dispose() {
+		makeCurrent();
 		listener.pause();
 		listener.dispose();
 		try {
@@ -558,6 +562,8 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 			glfwWindowHint(GLFW_STENCIL_BITS, config.stencil);
 			glfwWindowHint(GLFW_DEPTH_BITS, config.depth);
 			glfwWindowHint(GLFW_SAMPLES, config.samples);
+		} else {
+			glfwMakeContextCurrent(0L);
 		}
 
 		if (config.useGL30) {

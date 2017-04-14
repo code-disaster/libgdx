@@ -68,7 +68,7 @@ public class Lwjgl3Cursor implements Cursor {
 	Lwjgl3Cursor(Lwjgl3Window window, Pixmap pixmap, int xHotspot, int yHotspot) {
 		this.window = window;
 		final Pixmap cursorPixmap = copyPixmap(pixmap);
-		__post_render(window, () -> {
+		__post_render(() -> {
 			this.handle = __call_main(window, 0L, context -> {
 				try (MemoryStack stack = MemoryStack.stackPush()) {
 					GLFWImage image = GLFWImage.callocStack(stack);
@@ -89,7 +89,7 @@ public class Lwjgl3Cursor implements Cursor {
 
 	@Override
 	public void dispose() {
-		__post_render(window, () -> {
+		__post_render(() -> {
 			if (handle != 0L) {
 				handle = __call_main(window, 0L, context -> {
 					glfwDestroyCursor(handle);
@@ -100,7 +100,7 @@ public class Lwjgl3Cursor implements Cursor {
 	}
 
 	void setCursor() {
-		__post_render(window, () ->
+		__post_render(() ->
 				__post_main(window, context -> glfwSetCursor(context, handle))
 		);
 	}

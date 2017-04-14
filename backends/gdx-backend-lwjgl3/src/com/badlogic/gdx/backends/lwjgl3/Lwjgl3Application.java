@@ -174,10 +174,10 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 					window.requestRendering();
 				}
 
-				numRunnablesExecuted = executeRenderThreadRunnables(window);
-
 				window.makeCurrent();
 				currentWindow = window;
+
+				numRunnablesExecuted = executeRenderThreadRunnables(window);
 
 				if (window.update(numRunnablesExecuted > 0)) {
 					numWindowsRendered++;

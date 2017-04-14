@@ -92,4 +92,9 @@ public interface Lwjgl3WindowListener {
 	 */
 	void refreshRequested();
 
+	/**
+	 * Called when the cursor enters or leaves the window client area.
+	 */
+	void cursorEntered(boolean entered);
+
 }

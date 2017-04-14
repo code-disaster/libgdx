@@ -39,4 +39,8 @@ public class Lwjgl3WindowAdapter implements Lwjgl3WindowListener {
 	@Override
 	public void refreshRequested() {
 	}
+
+	@Override
+	public void cursorEntered(boolean entered) {
+	}
 }

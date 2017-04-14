@@ -136,6 +136,13 @@ public class Lwjgl3Input implements Input, Disposable {
 		}
 	};
 
+	private final GLFWCursorEnterCallback cursorEnterCallback = new GLFWCursorEnterCallback() {
+		@Override
+		public void invoke(long handle, boolean entered) {
+			__post_render(handle, () -> window.getWindowListener().cursorEntered(entered));
+		}
+	};
+
 	private final GLFWMouseButtonCallback mouseButtonCallback = new GLFWMouseButtonCallback() {
 		@Override
 		public void invoke(long handle, int button, int action, int mods) {
@@ -187,6 +194,7 @@ public class Lwjgl3Input implements Input, Disposable {
 		glfwSetCharCallback(handle, charCallback);
 		glfwSetScrollCallback(handle, scrollCallback);
 		glfwSetCursorPosCallback(handle, cursorPosCallback);
+		glfwSetCursorEnterCallback(handle, cursorEnterCallback);
 		glfwSetMouseButtonCallback(handle, mouseButtonCallback);
 	}
 
@@ -449,6 +457,7 @@ public class Lwjgl3Input implements Input, Disposable {
 		charCallback.free();
 		scrollCallback.free();
 		cursorPosCallback.free();
+		cursorEnterCallback.free();
 		mouseButtonCallback.free();
 	}
 

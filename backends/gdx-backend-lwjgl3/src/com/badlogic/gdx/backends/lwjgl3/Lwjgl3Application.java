@@ -377,12 +377,12 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 	@Override
 	public void addLifecycleListener(LifecycleListener listener) {
-		__post_render(currentWindow, () -> lifecycleListeners.add(listener));
+		__post_render(() -> lifecycleListeners.add(listener));
 	}
 
 	@Override
 	public void removeLifecycleListener(LifecycleListener listener) {
-		__post_render(currentWindow, () -> lifecycleListeners.removeValue(listener, true));
+		__post_render(() -> lifecycleListeners.removeValue(listener, true));
 	}
 
 	/**

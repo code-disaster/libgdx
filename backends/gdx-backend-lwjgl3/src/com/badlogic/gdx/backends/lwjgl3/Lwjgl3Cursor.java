@@ -23,6 +23,7 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.IntMap;
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.system.MemoryStack;
 
@@ -32,11 +33,23 @@ import static org.lwjgl.glfw.GLFW.*;
 /**
  * {@link Cursor} implementation using GLFW functions.
  * <p>
- * Contrary to previous implementations, no additional bookkeeping is done. Remaining cursors are destroyed on
- * {@link org.lwjgl.glfw.GLFW#glfwTerminate}, but to avoid leaking memory, the user application should ensure
- * proper resource cleanup.
+ * The {@link GLFW#glfwCreateCursor} function must be called on the main thread, and requires the window GL context to
+ * be current. To meet these requirements, this implementation does:
  * <p>
- * All available system cursors are created at startup and shared between windows.
+ * <ul>
+ * <li>post a runnable to itself, so that the owner's window GL context is not current anymore</li>
+ * <li>then delegate a call to the main thread, and wait (block) for completion</li>
+ * <li>in the main thread, make the GL context current, then finally create the cursor</li>
+ * </ul>
+ * <p>
+ * To set and dispose a cursor, the same staggered (but non-blocking) mechanism is used, to ensure that execution of
+ * API calls is done in the correct order.
+ * <p>
+ * Contrary to the previous implementation, no additional bookkeeping is done. Remaining cursors are destroyed on
+ * {@link GLFW#glfwTerminate} at application exit, but to avoid leaking memory, the user application should perform
+ * proper cleanup of resources.
+ * <p>
+ * {@link SystemCursor} resources are created at application start, and shared between windows.
  */
 public class Lwjgl3Cursor implements Cursor {
 
@@ -46,9 +59,11 @@ public class Lwjgl3Cursor implements Cursor {
 	private static final IntMap<Long> systemCursors = new IntMap<>();
 
 	/**
-	 * This function posts a {@link Runnable} to the main thread, which means it doesn't take effect immediately.
-	 * Still, applications are safe to follow up with a call to {@link Graphics#setCursor(Cursor)}, as this is done
-	 * through the same mechanism, which ensures the correct call order.
+	 * Creation of the cursor is deferred, which means it doesn't take effect immediately. Still, applications are
+	 * safe to follow up with a call to {@link Graphics#setCursor(Cursor)}.
+	 * <p>
+	 * The pixel data is copied, so the caller is safe to dispose the {@link Pixmap} right after creating the cursor
+	 * instance.
 	 */
 	Lwjgl3Cursor(Lwjgl3Window window, Pixmap pixmap, int xHotspot, int yHotspot) {
 		this.window = window;
@@ -85,16 +100,11 @@ public class Lwjgl3Cursor implements Cursor {
 	}
 
 	void setCursor() {
-		__post_render(window, () -> {
-			__post_main(window, context -> glfwSetCursor(context, handle));
-		});
+		__post_render(window, () ->
+				__post_main(window, context -> glfwSetCursor(context, handle))
+		);
 	}
 
-	/**
-	 * Creates a copy of the source pixmap. This enforces RGBA8888 format and a power-of-two size, and
-	 * ensures that the copy is available for deferred calls on the main thread, even when the application
-	 * decides to dispose the source pixmap right after the call to {@link #Lwjgl3Cursor}.
-	 */
 	private static Pixmap copyPixmap(Pixmap pixmap) {
 		int width = MathUtils.nextPowerOfTwo(pixmap.getWidth());
 		int height = MathUtils.nextPowerOfTwo(pixmap.getHeight());

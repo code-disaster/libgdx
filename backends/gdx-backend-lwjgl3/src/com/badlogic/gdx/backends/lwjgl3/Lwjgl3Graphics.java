@@ -87,6 +87,10 @@ public class Lwjgl3Graphics implements Graphics, Disposable {
 		currentWindow = window;
 	}
 
+	public Lwjgl3Window getWindow() {
+		return currentWindow;
+	}
+
 	@Override
 	public boolean isGL30Available() {
 		return gl30 != null;

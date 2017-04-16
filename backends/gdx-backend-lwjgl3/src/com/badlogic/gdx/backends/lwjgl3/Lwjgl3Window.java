@@ -402,7 +402,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		__post_main(handle, GLFW::glfwMaximizeWindow);
 	}
 
-	void setTitle(CharSequence title) {
+	public void setTitle(CharSequence title) {
 		__post_main(handle, context -> glfwSetWindowTitle(context, title));
 	}
 

@@ -38,7 +38,7 @@ import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
  * <p>
  * This class also provides some utility to manage GL context switches through {@link GLFW#glfwMakeContextCurrent}.
  */
-class Lwjgl3Runnables {
+public class Lwjgl3Runnables {
 
 	private static final LongMap<Array<WindowDelegate>> mainThreadDelegates = new LongMap<>();
 	private static final Array<WindowDelegate> mainThreadDelegatesExecuted = new Array<>();
@@ -92,7 +92,7 @@ class Lwjgl3Runnables {
 	 * <p>
 	 * This is a non-blocking call.
 	 */
-	static void __post_main(Runnable runnable) {
+	public static void __post_main(Runnable runnable) {
 		delegateToMainThread(0L, context -> runnable.run());
 	}
 
@@ -243,7 +243,7 @@ class Lwjgl3Runnables {
 	 * <p>
 	 * This call does not block the main thread.
 	 */
-	static void __post_render(Runnable runnable) {
+	public static void __post_render(Runnable runnable) {
 		delegateToRenderThread(0L, runnable);
 	}
 

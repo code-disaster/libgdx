@@ -14,7 +14,11 @@
  * limitations under the License.
  ******************************************************************************/
 
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
 dependencies {
+    compileOnly project(":backends:gdx-backend-lwjgl3")
     compileOnly project(":extensions:gdx-controllers:gdx-controllers")
     compileOnly libraries.lwjgl3
 }

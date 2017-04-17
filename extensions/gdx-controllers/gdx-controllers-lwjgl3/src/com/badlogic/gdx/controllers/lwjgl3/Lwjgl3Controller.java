@@ -1,53 +1,53 @@
 package com.badlogic.gdx.controllers.lwjgl3;
 
-import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-
-import org.lwjgl.glfw.GLFW;
-
-import com.badlogic.gdx.controllers.Controller;
-import com.badlogic.gdx.controllers.ControllerListener;
-import com.badlogic.gdx.controllers.PovDirection;
+import com.badlogic.gdx.controllers.*;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_render;
+import static org.lwjgl.glfw.GLFW.*;
+
 public class Lwjgl3Controller implements Controller {
+
 	final Lwjgl3ControllerManager manager;
-	final Array<ControllerListener> listeners = new Array<ControllerListener>();
+	final Array<ControllerListener> listeners = new Array<>();
 	final int index;
-	final float[] axisState;	
+	final float[] axisState;
 	final boolean[] buttonState;
-	final Vector3 zero = new Vector3(0, 0, 0);
 	final String name;
-	
-	public Lwjgl3Controller(Lwjgl3ControllerManager manager, int index) {
+
+	public Lwjgl3Controller (Lwjgl3ControllerManager manager, int index) {
 		this.manager = manager;
 		this.index = index;
-		this.axisState = new float[GLFW.glfwGetJoystickAxes(index).limit()];	
-		this.buttonState = new boolean[GLFW.glfwGetJoystickButtons(index).limit()];
-		this.name = GLFW.glfwGetJoystickName(index);
+		this.axisState = new float[glfwGetJoystickAxes(index).limit()];
+		this.buttonState = new boolean[glfwGetJoystickButtons(index).limit()];
+		this.name = glfwGetJoystickName(index);
 	}
-	
-	void pollState() {
-		if(!GLFW.glfwJoystickPresent(index)) {
-			manager.disconnected(this);
-			return;
+
+	boolean update () {
+
+		FloatBuffer axes = glfwGetJoystickAxes(index);
+		if (axes == null) {
+			return false;
 		}
-		
-		FloatBuffer axes = GLFW.glfwGetJoystickAxes(index);
-		if(axes == null) {
-			manager.disconnected(this);
-			return;
+
+		ByteBuffer buttons = glfwGetJoystickButtons(index);
+		if (buttons == null) {
+			return false;
 		}
-		ByteBuffer buttons = GLFW.glfwGetJoystickButtons(index);
-		if(buttons == null) {
-			manager.disconnected(this);
-			return;
-		}
-		
-		for(int i = 0; i < axes.limit(); i++) {
-			if(axisState[i] != axes.get(i)) {
-				for(ControllerListener listener: listeners) {
+
+		__post_render(() -> update(axes, buttons));
+
+		return true;
+	}
+
+	private void update (FloatBuffer axes, ByteBuffer buttons) {
+		for (int i = 0; i < axes.limit(); i++) {
+			if (axisState[i] != axes.get(i)) {
+				for (ControllerListener listener : listeners) {
 					listener.axisMoved(this, i, axes.get(i));
 				}
 				manager.axisChanged(this, i, axes.get(i));
@@ -55,21 +55,21 @@ public class Lwjgl3Controller implements Controller {
 			axisState[i] = axes.get(i);
 		}
 
-		for(int i = 0; i < buttons.limit(); i++) {
-			if(buttonState[i] != (buttons.get(i) == GLFW.GLFW_PRESS)) {
-				for(ControllerListener listener: listeners) {
-					if(buttons.get(i) == GLFW.GLFW_PRESS) {
+		for (int i = 0; i < buttons.limit(); i++) {
+			if (buttonState[i] != (buttons.get(i) == GLFW_PRESS)) {
+				for (ControllerListener listener : listeners) {
+					if (buttons.get(i) == GLFW_PRESS) {
 						listener.buttonDown(this, i);
 					} else {
 						listener.buttonUp(this, i);
 					}
 				}
-				manager.buttonChanged(this, i, buttons.get(i) == GLFW.GLFW_PRESS);
+				manager.buttonChanged(this, i, buttons.get(i) == GLFW_PRESS);
 			}
-			buttonState[i] = buttons.get(i) == GLFW.GLFW_PRESS;
+			buttonState[i] = buttons.get(i) == GLFW_PRESS;
 		}
 	}
-	
+
 	@Override
 	public void addListener (ControllerListener listener) {
 		listeners.add(listener);
@@ -79,10 +79,10 @@ public class Lwjgl3Controller implements Controller {
 	public void removeListener (ControllerListener listener) {
 		listeners.removeValue(listener, true);
 	}
-	
+
 	@Override
 	public boolean getButton (int buttonCode) {
-		if(buttonCode < 0 || buttonCode >= buttonState.length) {
+		if (buttonCode < 0 || buttonCode >= buttonState.length) {
 			return false;
 		}
 		return buttonState[buttonCode];
@@ -90,7 +90,7 @@ public class Lwjgl3Controller implements Controller {
 
 	@Override
 	public float getAxis (int axisCode) {
-		if(axisCode < 0 || axisCode >= axisState.length) {
+		if (axisCode < 0 || axisCode >= axisState.length) {
 			return 0;
 		}
 		return axisState[axisCode];
@@ -113,7 +113,7 @@ public class Lwjgl3Controller implements Controller {
 
 	@Override
 	public Vector3 getAccelerometer (int accelerometerCode) {
-		return zero;
+		return Vector3.Zero;
 	}
 
 	@Override
@@ -123,5 +123,5 @@ public class Lwjgl3Controller implements Controller {
 	@Override
 	public String getName () {
 		return name;
-	}	
+	}
 }

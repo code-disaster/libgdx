@@ -5,6 +5,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import org.lwjgl.glfw.GLFWJoystickCallback;
 
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__call_main;
 import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_main;
 import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_render;
 import static org.lwjgl.glfw.GLFW.*;
@@ -27,19 +28,25 @@ public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
 	};
 
 	public Lwjgl3ControllerManager() {
-		for (int i = GLFW_JOYSTICK_1; i < GLFW_JOYSTICK_LAST; i++) {
-			if (glfwJoystickPresent(i)) {
-				controllers.add(new Lwjgl3Controller(this, i));
+		__call_main(null, handle -> {
+			for (int i = GLFW_JOYSTICK_1; i < GLFW_JOYSTICK_LAST; i++) {
+				if (glfwJoystickPresent(i)) {
+					controllers.add(new Lwjgl3Controller(this, i));
+				}
 			}
-		}
-		glfwSetJoystickCallback(joystickCallback);
-		update();
+			glfwSetJoystickCallback(joystickCallback);
+			update();
+			return null;
+		});
 	}
 
 	@Override
 	public void dispose() {
-		glfwSetJoystickCallback(null);
-		joystickCallback.free();
+		__call_main(null, handle -> {
+			glfwSetJoystickCallback(null);
+			joystickCallback.free();
+			return null;
+		});
 	}
 
 	private void update() {

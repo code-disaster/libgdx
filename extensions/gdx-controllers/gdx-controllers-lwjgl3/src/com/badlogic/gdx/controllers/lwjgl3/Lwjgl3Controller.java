@@ -1,6 +1,7 @@
 package com.badlogic.gdx.controllers.lwjgl3;
 
 import com.badlogic.gdx.controllers.*;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 
@@ -16,14 +17,14 @@ public class Lwjgl3Controller implements Controller {
 	final Array<ControllerListener> listeners = new Array<>();
 	final int index;
 	final float[] axisState;
-	final boolean[] buttonState;
+	final byte[] buttonState;
 	final String name;
 
 	public Lwjgl3Controller (Lwjgl3ControllerManager manager, int index) {
 		this.manager = manager;
 		this.index = index;
 		this.axisState = new float[glfwGetJoystickAxes(index).limit()];
-		this.buttonState = new boolean[glfwGetJoystickButtons(index).limit()];
+		this.buttonState = new byte[glfwGetJoystickButtons(index).limit()];
 		this.name = glfwGetJoystickName(index);
 	}
 
@@ -39,35 +40,46 @@ public class Lwjgl3Controller implements Controller {
 			return false;
 		}
 
-		__post_render(() -> update(axes, buttons));
+		for (int i = 0; i < axes.limit(); i++) {
+			float state = axes.get(i);
+			if (!MathUtils.isEqual(state, axisState[i])) {
+				axisChanged(i, state);
+				axisState[i] = state;
+			}
+		}
+
+		for (int i = 0; i < buttons.limit(); i++) {
+			byte state = buttons.get(i);
+			if (state != buttonState[i]) {
+				buttonChanged(i, state);
+				buttonState[i] = state;
+			}
+		}
 
 		return true;
 	}
 
-	private void update (FloatBuffer axes, ByteBuffer buttons) {
-		for (int i = 0; i < axes.limit(); i++) {
-			if (axisState[i] != axes.get(i)) {
-				for (ControllerListener listener : listeners) {
-					listener.axisMoved(this, i, axes.get(i));
-				}
-				manager.axisChanged(this, i, axes.get(i));
+	private void axisChanged (int index, float state) {
+		__post_render(() -> {
+			for (ControllerListener listener : listeners) {
+				listener.axisMoved(this, index, state);
 			}
-			axisState[i] = axes.get(i);
-		}
+			manager.axisChanged(this, index, state);
+		});
+	}
 
-		for (int i = 0; i < buttons.limit(); i++) {
-			if (buttonState[i] != (buttons.get(i) == GLFW_PRESS)) {
-				for (ControllerListener listener : listeners) {
-					if (buttons.get(i) == GLFW_PRESS) {
-						listener.buttonDown(this, i);
-					} else {
-						listener.buttonUp(this, i);
-					}
+	private void buttonChanged (int index, byte state) {
+		__post_render(() -> {
+			boolean pressed = state == GLFW_PRESS;
+			for (ControllerListener listener : listeners) {
+				if (pressed) {
+					listener.buttonDown(this, index);
+				} else {
+					listener.buttonUp(this, index);
 				}
-				manager.buttonChanged(this, i, buttons.get(i) == GLFW_PRESS);
 			}
-			buttonState[i] = buttons.get(i) == GLFW_PRESS;
-		}
+			manager.buttonChanged(this, index, pressed);
+		});
 	}
 
 	@Override
@@ -85,7 +97,7 @@ public class Lwjgl3Controller implements Controller {
 		if (buttonCode < 0 || buttonCode >= buttonState.length) {
 			return false;
 		}
-		return buttonState[buttonCode];
+		return buttonState[buttonCode] == GLFW_PRESS;
 	}
 
 	@Override

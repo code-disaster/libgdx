@@ -56,7 +56,7 @@ public class Lwjgl3Runnables {
 	}
 
 	@FunctionalInterface
-	interface WindowDelegateFunction<R> {
+	public interface WindowDelegateFunction<R> {
 
 		R call(long window);
 	}
@@ -131,7 +131,7 @@ public class Lwjgl3Runnables {
 	 * This is a blocking call. The render thread (and therefor, the {@link ApplicationListener}) does not continue
 	 * until the function has been executed on the main thread.
 	 */
-	static <R> R __call_main(R defaultValue, WindowDelegateFunction<R> delegate) {
+	public static <R> R __call_main(R defaultValue, WindowDelegateFunction<R> delegate) {
 		return callMainThread(0L, defaultValue, delegate);
 	}
 

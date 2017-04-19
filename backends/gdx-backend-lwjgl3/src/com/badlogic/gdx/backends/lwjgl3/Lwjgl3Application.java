@@ -109,6 +109,11 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 				shouldExit = numWindows == 0 || exceptionCaught;
 			}
 
+			while (rendering) {
+				glfwPollEvents();
+				executeMainThreadDelegates();
+			}
+
 			renderThread.join(); // wait for the render thread to complete
 
 		} catch (Throwable t) {

@@ -40,6 +40,8 @@ import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
  */
 public class Lwjgl3Runnables {
 
+	static final long APPLICATION_CONTEXT = 0L;
+
 	private static final LongMap<Array<WindowDelegate>> mainThreadDelegates = new LongMap<>();
 	private static final Array<WindowDelegate> mainThreadDelegatesExecuted = new Array<>();
 
@@ -93,7 +95,7 @@ public class Lwjgl3Runnables {
 	 * This is a non-blocking call.
 	 */
 	public static void __post_main(Runnable runnable) {
-		delegateToMainThread(0L, context -> runnable.run());
+		delegateToMainThread(APPLICATION_CONTEXT, context -> runnable.run());
 	}
 
 	/**
@@ -122,7 +124,7 @@ public class Lwjgl3Runnables {
 	 * until the function has been executed on the main thread.
 	 */
 	static <R> R __call_main(WindowDelegateFunction<R> delegate) throws InterruptedException {
-		return callMainThread(0L, null, delegate);
+		return callMainThread(APPLICATION_CONTEXT, null, delegate);
 	}
 
 	/**
@@ -132,7 +134,7 @@ public class Lwjgl3Runnables {
 	 * until the function has been executed on the main thread.
 	 */
 	public static <R> R __call_main(R defaultValue, WindowDelegateFunction<R> delegate) {
-		return callMainThread(0L, defaultValue, delegate);
+		return callMainThread(APPLICATION_CONTEXT, defaultValue, delegate);
 	}
 
 	/**
@@ -160,9 +162,9 @@ public class Lwjgl3Runnables {
 	/**
 	 * Queues a function for asynchronous, non-blocking execution in the main thread.
 	 */
-	private static void delegateToMainThread(long window, WindowDelegate delegate) {
+	private static void delegateToMainThread(long context, WindowDelegate delegate) {
 		synchronized (mainThreadDelegates) {
-			mainThreadDelegates.get(window).add(delegate);
+			mainThreadDelegates.get(context).add(delegate);
 			glfwPostEmptyEvent();
 		}
 	}
@@ -171,12 +173,12 @@ public class Lwjgl3Runnables {
 	 * Queues a function for blocking execution in the main thread. Uses a {@link CountDownLatch} to wait until the
 	 * result is available.
 	 */
-	private static <R> R callMainThread(long window, R defaultValue, WindowDelegateFunction<R> delegate) {
+	private static <R> R callMainThread(long context, R defaultValue, WindowDelegateFunction<R> delegate) {
 		AtomicReference<R> result = new AtomicReference<>(defaultValue);
 		CountDownLatch latch = new CountDownLatch(1);
 		synchronized (mainThreadDelegates) {
-			mainThreadDelegates.get(window).add(context -> {
-				R r = delegate.call(context);
+			mainThreadDelegates.get(context).add(ctx -> {
+				R r = delegate.call(ctx);
 				result.set(r);
 				latch.countDown();
 			});
@@ -194,7 +196,7 @@ public class Lwjgl3Runnables {
 	 * Runs all delegates queued up for execution on the main thread, which are not bound to any window.
 	 */
 	static void executeMainThreadDelegates() {
-		executeMainThreadDelegates(0L);
+		executeMainThreadDelegates(APPLICATION_CONTEXT);
 	}
 
 	/**
@@ -204,15 +206,15 @@ public class Lwjgl3Runnables {
 		executeMainThreadDelegates(window.getWindowHandle());
 	}
 
-	private static void executeMainThreadDelegates(long window) {
+	private static void executeMainThreadDelegates(long context) {
 		mainThreadDelegatesExecuted.clear();
 		synchronized (mainThreadDelegates) {
-			Array<WindowDelegate> delegates = mainThreadDelegates.get(window);
+			Array<WindowDelegate> delegates = mainThreadDelegates.get(context);
 			mainThreadDelegatesExecuted.addAll(delegates);
 			delegates.clear();
 		}
 		for (WindowDelegate delegate : mainThreadDelegatesExecuted) {
-			delegate.run(window);
+			delegate.run(context);
 		}
 	}
 
@@ -221,13 +223,13 @@ public class Lwjgl3Runnables {
 	 *
 	 * @throws ConcurrentModificationException if the context is already current in the render thread
 	 */
-	static void __context_main(long window) {
-		setMainThreadContext(window);
+	static void __context_main(long context) {
+		setMainThreadContext(context);
 	}
 
 	private static void setMainThreadContext(long context) {
 		synchronized (mainThreadContext) {
-			if (context != 0L && context == renderThreadContext.get()) {
+			if (context != APPLICATION_CONTEXT && context == renderThreadContext.get()) {
 				throw new ConcurrentModificationException("Context already active in render thread");
 			}
 			long current = mainThreadContext.get();
@@ -244,7 +246,7 @@ public class Lwjgl3Runnables {
 	 * This call does not block the main thread.
 	 */
 	public static void __post_render(Runnable runnable) {
-		delegateToRenderThread(0L, runnable);
+		delegateToRenderThread(APPLICATION_CONTEXT, runnable);
 	}
 
 	/**
@@ -266,9 +268,9 @@ public class Lwjgl3Runnables {
 		delegateToRenderThread(context, runnable);
 	}
 
-	private static void delegateToRenderThread(long window, Runnable runnable) {
+	private static void delegateToRenderThread(long context, Runnable runnable) {
 		synchronized (renderThreadRunnables) {
-			renderThreadRunnables.get(window).add(runnable);
+			renderThreadRunnables.get(context).add(runnable);
 		}
 	}
 
@@ -276,7 +278,7 @@ public class Lwjgl3Runnables {
 	 * Executes all runnables queued up on the render thread, which are not bound to any window.
 	 */
 	static int executeRenderThreadRunnables() {
-		return executeRenderThreadRunnables(0L);
+		return executeRenderThreadRunnables(APPLICATION_CONTEXT);
 	}
 
 	/**
@@ -286,10 +288,10 @@ public class Lwjgl3Runnables {
 		return executeRenderThreadRunnables(window.getWindowHandle());
 	}
 
-	private static int executeRenderThreadRunnables(long window) {
+	private static int executeRenderThreadRunnables(long context) {
 		renderThreadRunnablesExecuted.clear();
 		synchronized (renderThreadRunnables) {
-			Array<Runnable> runnables = renderThreadRunnables.get(window);
+			Array<Runnable> runnables = renderThreadRunnables.get(context);
 			renderThreadRunnablesExecuted.addAll(runnables);
 			runnables.clear();
 		}
@@ -304,13 +306,13 @@ public class Lwjgl3Runnables {
 	 *
 	 * @throws ConcurrentModificationException if the context is already current in the main thread
 	 */
-	static void __context_render(long window) {
-		setRenderThreadContext(window);
+	static void __context_render(long context) {
+		setRenderThreadContext(context);
 	}
 
 	private static void setRenderThreadContext(long context) {
 		synchronized (mainThreadContext) {
-			if (context != 0L && context == mainThreadContext.get()) {
+			if (context != APPLICATION_CONTEXT && context == mainThreadContext.get()) {
 				throw new ConcurrentModificationException("Context already active in main thread");
 			}
 			long current = renderThreadContext.get();

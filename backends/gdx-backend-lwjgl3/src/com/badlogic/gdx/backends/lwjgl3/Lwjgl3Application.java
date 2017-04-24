@@ -41,6 +41,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	private final ObjectMap<String, Preferences> preferences = new ObjectMap<>();
 
 	private final Thread renderThread;
+	private volatile boolean updating = true;
 	private volatile boolean rendering = true;
 	private volatile boolean exceptionCaught = false;
 	private final Array<Lwjgl3Window> windows = new Array<>();
@@ -82,7 +83,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		renderThread.setUncaughtExceptionHandler(this::renderThreadExceptionHandler);
 		renderThread.start();
 
-		registerContext(0L);
+		registerContext(APPLICATION_CONTEXT);
 
 		mainThreadFunction();
 	}
@@ -90,9 +91,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	private void mainThreadFunction() {
 		try {
 
-			boolean shouldExit = false;
-
-			while (!shouldExit) {
+			while (updating && !exceptionCaught) {
 				glfwWaitEventsTimeout(1.0);
 				executeMainThreadDelegates();
 
@@ -104,14 +103,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 					}
 				}
 
-				__context_main(0L);
-
-				shouldExit = numWindows == 0 || exceptionCaught;
-			}
-
-			while (rendering) {
-				glfwPollEvents();
-				executeMainThreadDelegates();
+				__context_main(APPLICATION_CONTEXT);
 			}
 
 			renderThread.join(); // wait for the render thread to complete
@@ -127,7 +119,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	}
 
 	private void shutdown() {
-		unregisterContext(0L);
+		unregisterContext(APPLICATION_CONTEXT);
 		// TODO: audio
 		Lwjgl3Cursor.disposeSystemCursors();
 		errorCallback.free();
@@ -158,7 +150,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 		while (rendering) {
 
-			__context_render(0L);
+			__context_render(APPLICATION_CONTEXT);
 
 			int numRunnablesExecuted = executeRenderThreadRunnables();
 			boolean shouldRequestRendering = numRunnablesExecuted > 0;
@@ -209,6 +201,11 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		}
 
 		closeWindows(windows);
+
+		__call_main((Void) null, context -> {
+			updating = false;
+			return null;
+		});
 	}
 
 	private void closeWindows(Array<Lwjgl3Window> closedWindows) {

@@ -29,6 +29,7 @@ import org.lwjgl.system.MemoryStack;
 
 import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.*;
 import static org.lwjgl.glfw.GLFW.*;
+import static org.lwjgl.system.MemoryUtil.NULL;
 
 /**
  * {@link Cursor} implementation using GLFW functions.
@@ -114,7 +115,12 @@ public class Lwjgl3Cursor implements Cursor {
 	}
 
 	static void setSystemCursor(Lwjgl3Window window, SystemCursor cursor) {
-		__post_main(window, context -> glfwSetCursor(context, systemCursors.get(cursor.ordinal())));
+		__post_render(() ->
+				__post_main(window, context -> {
+					long handle = cursor != null ? systemCursors.get(cursor.ordinal()) : NULL;
+					glfwSetCursor(context, handle);
+				})
+		);
 	}
 
 	static void createSystemCursors() {

@@ -145,7 +145,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			setGLDebugMessageControl(GLDebugMessageSeverity.NOTIFICATION, false);
 		}
 
-		final Array<Lwjgl3Window> windows = new Array<>();
+		final Array<Lwjgl3Window> activeWindows = new Array<>();
 		final Array<Lwjgl3Window> closedWindows = new Array<>();
 
 		while (rendering) {
@@ -157,15 +157,15 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 			graphics.update();
 
-			windows.clear();
+			activeWindows.clear();
 			closedWindows.clear();
 
 			synchronized (this.windows) {
-				windows.addAll(this.windows);
+				activeWindows.addAll(this.windows);
 			}
 
 			int numWindowsRendered = 0;
-			for (Lwjgl3Window window : windows) {
+			for (Lwjgl3Window window : activeWindows) {
 
 				if (shouldRequestRendering && !window.continuous) {
 					window.requestRendering();

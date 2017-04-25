@@ -76,7 +76,6 @@ public class Lwjgl3Cursor implements Cursor {
 					image.width(cursorPixmap.getWidth());
 					image.height(cursorPixmap.getHeight());
 					image.pixels(cursorPixmap.getPixels());
-					__context_main(context);
 					long cursor = glfwCreateCursor(image, xHotspot, yHotspot);
 					cursorPixmap.dispose();
 					return cursor;

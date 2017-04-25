@@ -23,8 +23,9 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.ConcurrentModificationException;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
 import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
@@ -48,8 +49,9 @@ public class Lwjgl3Runnables {
 	private static final LongMap<Array<Runnable>> renderThreadRunnables = new LongMap<>();
 	private static final Array<Runnable> renderThreadRunnablesExecuted = new Array<>();
 
-	private static final AtomicLong mainThreadContext = new AtomicLong();
-	private static final AtomicLong renderThreadContext = new AtomicLong();
+	private static volatile long mainThreadContext = APPLICATION_CONTEXT;
+	private static volatile long renderThreadContext = APPLICATION_CONTEXT;
+	private static final LongMap<Lock> contextLocks = new LongMap<>();
 
 	@FunctionalInterface
 	interface WindowDelegate {
@@ -74,6 +76,9 @@ public class Lwjgl3Runnables {
 		synchronized (renderThreadRunnables) {
 			renderThreadRunnables.put(context, new Array<>());
 		}
+		synchronized (contextLocks) {
+			contextLocks.put(context, new ReentrantLock());
+		}
 	}
 
 	/**
@@ -86,6 +91,9 @@ public class Lwjgl3Runnables {
 		}
 		synchronized (renderThreadRunnables) {
 			renderThreadRunnables.remove(context);
+		}
+		synchronized (contextLocks) {
+			contextLocks.remove(context);
 		}
 	}
 
@@ -203,7 +211,8 @@ public class Lwjgl3Runnables {
 	 * Runs all delegates queued up for execution on the main thread, in context of the specified window.
 	 */
 	static void executeMainThreadDelegates(Lwjgl3Window window) {
-		executeMainThreadDelegates(window.getWindowHandle());
+		long context = window.getWindowHandle();
+		executeMainThreadDelegates(context);
 	}
 
 	private static void executeMainThreadDelegates(long context) {
@@ -213,8 +222,11 @@ public class Lwjgl3Runnables {
 			mainThreadDelegatesExecuted.addAll(delegates);
 			delegates.clear();
 		}
-		for (WindowDelegate delegate : mainThreadDelegatesExecuted) {
-			delegate.run(context);
+		if (mainThreadDelegatesExecuted.size > 0) {
+			__context_main(context);
+			for (WindowDelegate delegate : mainThreadDelegatesExecuted) {
+				delegate.run(context);
+			}
 		}
 	}
 
@@ -228,14 +240,28 @@ public class Lwjgl3Runnables {
 	}
 
 	private static void setMainThreadContext(long context) {
-		synchronized (mainThreadContext) {
-			if (context != APPLICATION_CONTEXT && context == renderThreadContext.get()) {
-				throw new ConcurrentModificationException("Context already active in render thread");
+		long current = mainThreadContext;
+		if (context != current) {
+			if (context != APPLICATION_CONTEXT) {
+				Lock lock;
+				synchronized (contextLocks) {
+					lock = contextLocks.get(context);
+				}
+				lock.lock();
+				if (context == renderThreadContext) {
+					throw new ConcurrentModificationException("Context already active in render thread");
+				}
 			}
-			long current = mainThreadContext.get();
-			if (context != current) {
-				glfwMakeContextCurrent(context);
-				mainThreadContext.set(context);
+			glfwMakeContextCurrent(context);
+			mainThreadContext = context;
+			if (current != APPLICATION_CONTEXT) {
+				Lock lock;
+				synchronized (contextLocks) {
+					lock = contextLocks.get(current);
+				}
+				if (lock != null) {
+					lock.unlock();
+				}
 			}
 		}
 	}
@@ -311,14 +337,28 @@ public class Lwjgl3Runnables {
 	}
 
 	private static void setRenderThreadContext(long context) {
-		synchronized (mainThreadContext) {
-			if (context != APPLICATION_CONTEXT && context == mainThreadContext.get()) {
-				throw new ConcurrentModificationException("Context already active in main thread");
+		long current = renderThreadContext;
+		if (context != current) {
+			if (context != APPLICATION_CONTEXT) {
+				Lock lock;
+				synchronized (contextLocks) {
+					lock = contextLocks.get(context);
+				}
+				lock.lock();
+				if (context == mainThreadContext) {
+					throw new ConcurrentModificationException("Context already active in main thread");
+				}
 			}
-			long current = renderThreadContext.get();
-			if (context != current) {
-				glfwMakeContextCurrent(context);
-				renderThreadContext.set(context);
+			glfwMakeContextCurrent(context);
+			renderThreadContext = context;
+			if (current != APPLICATION_CONTEXT) {
+				Lock lock;
+				synchronized (contextLocks) {
+					lock = contextLocks.get(current);
+				}
+				if (lock != null) {
+					lock.unlock();
+				}
 			}
 		}
 	}

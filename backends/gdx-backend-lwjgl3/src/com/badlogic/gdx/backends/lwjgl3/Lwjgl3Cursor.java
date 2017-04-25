@@ -27,27 +27,19 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.system.MemoryStack;
 
-import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.*;
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__call_main;
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_main;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 /**
  * {@link Cursor} implementation using GLFW functions.
  * <p>
- * The {@link GLFW#glfwCreateCursor} function must be called on the main thread, and requires the window GL context to
- * be current. To meet these requirements, this implementation does:
- * <p>
- * <ul>
- * <li>post a runnable to itself, so that the owner's window GL context is not current anymore</li>
- * <li>then delegate a call to the main thread, and wait (block) for completion</li>
- * <li>in the main thread, make the GL context current, then finally create the cursor</li>
- * </ul>
- * <p>
- * To set and dispose a cursor, the same staggered (but non-blocking) mechanism is used, to ensure that execution of
- * API calls is done in the correct order.
+ * The {@link GLFW#glfwCreateCursor} function must be called on the main thread, and requires the window GL context
+ * to be current. Creating and disposing a cursor is a blocking operation.
  * <p>
  * Contrary to the previous implementation, no additional bookkeeping is done. Remaining cursors are destroyed on
- * {@link GLFW#glfwTerminate} at application exit, but to avoid leaking memory, the user application should perform
+ * {@link GLFW#glfwTerminate} at application exit, but to avoid memory leaks, the user application should perform
  * proper cleanup of resources.
  * <p>
  * {@link SystemCursor} resources are created at application start, and shared between windows.
@@ -96,9 +88,7 @@ public class Lwjgl3Cursor implements Cursor {
 	}
 
 	void setCursor() {
-		__post_render(() ->
-				__post_main(window, context -> glfwSetCursor(context, handle))
-		);
+		__post_main(window, context -> glfwSetCursor(context, handle));
 	}
 
 	private static Pixmap copyPixmap(Pixmap pixmap) {
@@ -110,12 +100,10 @@ public class Lwjgl3Cursor implements Cursor {
 	}
 
 	static void setSystemCursor(Lwjgl3Window window, SystemCursor cursor) {
-		__post_render(() ->
-				__post_main(window, context -> {
-					long handle = cursor != null ? systemCursors.get(cursor.ordinal()) : NULL;
-					glfwSetCursor(context, handle);
-				})
-		);
+		__post_main(window, context -> {
+			long handle = cursor != null ? systemCursors.get(cursor.ordinal()) : NULL;
+			glfwSetCursor(context, handle);
+		});
 	}
 
 	static void createSystemCursors() {

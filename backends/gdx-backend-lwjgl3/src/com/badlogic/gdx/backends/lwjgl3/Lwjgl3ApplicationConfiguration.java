@@ -52,6 +52,8 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 
 	boolean debug = false;
 	PrintStream debugStream = System.err;
+
+	boolean separateRenderThread = false;
 	
 	static Lwjgl3ApplicationConfiguration copy(Lwjgl3ApplicationConfiguration config) {
 		Lwjgl3ApplicationConfiguration copy = new Lwjgl3ApplicationConfiguration();
@@ -81,6 +83,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 		hdpiMode = config.hdpiMode;
 		debug = config.debug;
 		debugStream = config.debugStream;
+		separateRenderThread = config.separateRenderThread;
 	}
 	
 	/**
@@ -223,6 +226,21 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	public void enableGLDebugOutput(boolean enable, PrintStream debugOutputStream) {
 		debug = enable;
 		debugStream = debugOutputStream;
+	}
+
+	/**
+	 * Enables execution of user-application code in a separate render thread.
+	 *
+	 * If enabled, the backend creates a separate render thread which runs all user code. In
+	 * this mode, the main thread only processes window messages and (most) GLFW function calls,
+	 * and forwards GLFW callbacks to the render thread.
+	 *
+	 * If enabled, it is illegal to call any GLFW functions manually inside the scope of
+	 * {@link ApplicationListener}. Those calls require special treatment, which is managed
+	 * by the {@link Lwjgl3Runnables} class.
+	 */
+	public void enableSeparateRenderThread(boolean enable) {
+		separateRenderThread = enable;
 	}
 
 	/**

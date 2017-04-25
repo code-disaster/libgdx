@@ -79,13 +79,30 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		Lwjgl3Window primaryWindow = new Lwjgl3Window(listener, config);
 		windows.add(primaryWindow);
 
-		renderThread = new Thread(this::renderThreadFunction, "gdx-render");
-		renderThread.setUncaughtExceptionHandler(this::renderThreadExceptionHandler);
-		renderThread.start();
-
 		registerContext(APPLICATION_CONTEXT);
+		Lwjgl3Runnables.separateRenderThread = config.separateRenderThread;
 
-		mainThreadFunction();
+		if (separateRenderThread) {
+			renderThread = new Thread(this::renderThreadFunction, "gdx-render");
+			renderThread.setUncaughtExceptionHandler(this::renderThreadExceptionHandler);
+			renderThread.start();
+
+			mainThreadFunction();
+		} else {
+			renderThread = null;
+			renderThreadFunction();
+		}
+	}
+
+	private void shutdown() {
+		unregisterContext(APPLICATION_CONTEXT);
+		// TODO: audio
+		Lwjgl3Cursor.disposeSystemCursors();
+		errorCallback.free();
+		if (glDebugCallback != null) {
+			glDebugCallback.free();
+		}
+		glfwTerminate();
 	}
 
 	private void mainThreadFunction() {
@@ -118,17 +135,6 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		}
 	}
 
-	private void shutdown() {
-		unregisterContext(APPLICATION_CONTEXT);
-		// TODO: audio
-		Lwjgl3Cursor.disposeSystemCursors();
-		errorCallback.free();
-		if (glDebugCallback != null) {
-			glDebugCallback.free();
-		}
-		glfwTerminate();
-	}
-
 	private void renderThreadFunction() {
 
 		Lwjgl3Window primaryWindow = windows.get(0);
@@ -149,6 +155,18 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		final Array<Lwjgl3Window> closedWindows = new Array<>();
 
 		while (rendering) {
+
+			if (!separateRenderThread) {
+				// in single-threaded mode, simulate main thread update
+				glfwPollEvents();
+				executeMainThreadDelegates();
+
+				for (Lwjgl3Window window : windows) {
+					executeMainThreadDelegates(window);
+				}
+
+				__context_main(APPLICATION_CONTEXT);
+			}
 
 			__context_render(APPLICATION_CONTEXT);
 

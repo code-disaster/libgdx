@@ -41,6 +41,7 @@ import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
  */
 public class Lwjgl3Runnables {
 
+	static volatile boolean separateRenderThread = false;
 	static final long APPLICATION_CONTEXT = 0L;
 
 	private static final LongMap<Array<WindowDelegate>> mainThreadDelegates = new LongMap<>();
@@ -171,9 +172,13 @@ public class Lwjgl3Runnables {
 	 * Queues a function for asynchronous, non-blocking execution in the main thread.
 	 */
 	private static void delegateToMainThread(long context, WindowDelegate delegate) {
-		synchronized (mainThreadDelegates) {
-			mainThreadDelegates.get(context).add(delegate);
-			glfwPostEmptyEvent();
+		if (separateRenderThread) {
+			synchronized (mainThreadDelegates) {
+				mainThreadDelegates.get(context).add(delegate);
+				glfwPostEmptyEvent();
+			}
+		} else {
+			delegate.run(context);
 		}
 	}
 
@@ -182,22 +187,26 @@ public class Lwjgl3Runnables {
 	 * result is available.
 	 */
 	private static <R> R callMainThread(long context, R defaultValue, WindowDelegateFunction<R> delegate) {
-		AtomicReference<R> result = new AtomicReference<>(defaultValue);
-		CountDownLatch latch = new CountDownLatch(1);
-		synchronized (mainThreadDelegates) {
-			mainThreadDelegates.get(context).add(ctx -> {
-				R r = delegate.call(ctx);
-				result.set(r);
-				latch.countDown();
-			});
-			glfwPostEmptyEvent();
+		if (separateRenderThread) {
+			AtomicReference<R> result = new AtomicReference<>(defaultValue);
+			CountDownLatch latch = new CountDownLatch(1);
+			synchronized (mainThreadDelegates) {
+				mainThreadDelegates.get(context).add(ctx -> {
+					R r = delegate.call(ctx);
+					result.set(r);
+					latch.countDown();
+				});
+				glfwPostEmptyEvent();
+			}
+			try {
+				latch.await();
+			} catch (InterruptedException e) {
+				result.set(defaultValue);
+			}
+			return result.get();
+		} else {
+			return delegate.call(context);
 		}
-		try {
-			latch.await();
-		} catch (InterruptedException e) {
-			result.set(defaultValue);
-		}
-		return result.get();
 	}
 
 	/**

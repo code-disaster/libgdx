@@ -69,34 +69,30 @@ public class Lwjgl3Cursor implements Cursor {
 	Lwjgl3Cursor(Lwjgl3Window window, Pixmap pixmap, int xHotspot, int yHotspot) {
 		this.window = window;
 		final Pixmap cursorPixmap = copyPixmap(pixmap);
-		__post_render(() -> {
-			this.handle = __call_main(window, 0L, context -> {
-				try (MemoryStack stack = MemoryStack.stackPush()) {
-					GLFWImage image = GLFWImage.callocStack(stack);
-					image.width(cursorPixmap.getWidth());
-					image.height(cursorPixmap.getHeight());
-					image.pixels(cursorPixmap.getPixels());
-					long cursor = glfwCreateCursor(image, xHotspot, yHotspot);
-					cursorPixmap.dispose();
-					return cursor;
-				}
-			});
-			if (handle == 0L) {
-				Gdx.app.log("Lwjgl3Application", "Failed to create cursor");
+		this.handle = __call_main(window, 0L, context -> {
+			try (MemoryStack stack = MemoryStack.stackPush()) {
+				GLFWImage image = GLFWImage.callocStack(stack);
+				image.width(cursorPixmap.getWidth());
+				image.height(cursorPixmap.getHeight());
+				image.pixels(cursorPixmap.getPixels());
+				long cursor = glfwCreateCursor(image, xHotspot, yHotspot);
+				cursorPixmap.dispose();
+				return cursor;
 			}
 		});
+		if (handle == 0L) {
+			Gdx.app.log("Lwjgl3Application", "Failed to create cursor");
+		}
 	}
 
 	@Override
 	public void dispose() {
-		__post_render(() -> {
-			if (handle != 0L) {
-				handle = __call_main(window, 0L, context -> {
-					glfwDestroyCursor(handle);
-					return 0L;
-				});
-			}
-		});
+		if (handle != 0L) {
+			handle = __call_main(window, 0L, context -> {
+				glfwDestroyCursor(handle);
+				return 0L;
+			});
+		}
 	}
 
 	void setCursor() {

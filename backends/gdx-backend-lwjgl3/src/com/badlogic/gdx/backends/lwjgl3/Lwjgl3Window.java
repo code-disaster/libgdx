@@ -217,7 +217,9 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 
 		bufferFormat = new BufferFormat(config.r, config.g, config.b, config.a,
 				config.depth, config.stencil, config.samples, false);
+	}
 
+	void notifyNewWindow() {
 		makeCurrent();
 
 		windowListener.created(this);

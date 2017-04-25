@@ -145,6 +145,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		}
 
 		primaryWindow.completeWindow(primaryWindowHandle);
+		primaryWindow.notifyNewWindow();
 
 		if (config.debug) {
 			glDebugCallback = GLUtil.setupDebugMessageCallback(config.debugStream);
@@ -424,6 +425,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			synchronized (windows) {
 				windows.add(window);
 			}
+			window.notifyNewWindow();
 		});
 
 		return window;

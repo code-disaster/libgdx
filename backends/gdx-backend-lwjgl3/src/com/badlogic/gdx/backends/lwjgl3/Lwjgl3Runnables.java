@@ -202,14 +202,15 @@ public class Lwjgl3Runnables {
 			boolean needRelock = context != APPLICATION_CONTEXT && context == current;
 			if (needRelock) {
 				//
-				// We are in the render thread, and in context of a window, so we own its context lock already. If
-				// we wait on the latch now, we are running into a deadlock, because the main thread won't get past
+				// We are in the render thread, and in context of a window, so we own its context already. If we
+				// wait on the latch now, we are running into a deadlock, because the main thread won't get past
 				// our context lock while we hold it.
 				//
 				// To resolve this, we briefly unlock here, wait for the latch countdown, and lock again. While we
 				// wait, the main thread does its work, including the runnable above, which gets us past the latch.
 				//
 				renderThreadContext = APPLICATION_CONTEXT;
+				glfwMakeContextCurrent(APPLICATION_CONTEXT);
 				contextLocks.get(context).unlock();
 			}
 			try {
@@ -220,6 +221,7 @@ public class Lwjgl3Runnables {
 			if (needRelock) {
 				contextLocks.get(context).lock();
 				renderThreadContext = context;
+				glfwMakeContextCurrent(context);
 			}
 			return result.get();
 		} else {

@@ -108,16 +108,19 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	private void mainThreadFunction() {
 		try {
 
+			final Array<Lwjgl3Window> activeWindows = new Array<>();
+
 			while (updating && !exceptionCaught) {
 				glfwWaitEventsTimeout(1.0);
 				executeMainThreadDelegates();
 
-				int numWindows;
+				activeWindows.clear();
 				synchronized (windows) {
-					numWindows = windows.size;
-					for (int i = 0; i < numWindows; i++) {
-						executeMainThreadDelegates(windows.get(i));
-					}
+					activeWindows.addAll(windows);
+				}
+
+				for (Lwjgl3Window window : activeWindows) {
+					executeMainThreadDelegates(window);
 				}
 
 				__context_main(APPLICATION_CONTEXT);
@@ -179,8 +182,8 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			activeWindows.clear();
 			closedWindows.clear();
 
-			synchronized (this.windows) {
-				activeWindows.addAll(this.windows);
+			synchronized (windows) {
+				activeWindows.addAll(windows);
 			}
 
 			int numWindowsRendered = 0;
@@ -219,7 +222,12 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			rendering &= windows.size > 0;
 		}
 
-		closeWindows(windows);
+		closedWindows.clear();
+		synchronized (windows) {
+			closedWindows.addAll(windows);
+		}
+
+		closeWindows(closedWindows);
 
 		__call_main((Void) null, context -> {
 			updating = false;

@@ -28,7 +28,6 @@ import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.system.MemoryStack;
 
 import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__call_main;
-import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_main;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
@@ -88,7 +87,10 @@ public class Lwjgl3Cursor implements Cursor {
 	}
 
 	void setCursor() {
-		__post_main(window, context -> glfwSetCursor(context, handle));
+		__call_main(window, 0L, context -> {
+			glfwSetCursor(context, handle);
+			return 0L;
+		});
 	}
 
 	private static Pixmap copyPixmap(Pixmap pixmap) {
@@ -100,9 +102,10 @@ public class Lwjgl3Cursor implements Cursor {
 	}
 
 	static void setSystemCursor(Lwjgl3Window window, SystemCursor cursor) {
-		__post_main(window, context -> {
+		__call_main(window, 0L, context -> {
 			long handle = cursor != null ? systemCursors.get(cursor.ordinal()) : NULL;
 			glfwSetCursor(context, handle);
+			return 0L;
 		});
 	}
 

@@ -31,7 +31,6 @@ import static org.lwjgl.glfw.GLFW.*;
 
 public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
-	private final ApplicationListener listener;
 	private final Lwjgl3ApplicationConfiguration config;
 
 	private final Lwjgl3Graphics graphics;
@@ -44,7 +43,8 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	private volatile boolean updating = true;
 	private volatile boolean rendering = true;
 	private volatile boolean exceptionCaught = false;
-	private final Array<Lwjgl3Window> windows = new Array<>();
+	private final Array<Lwjgl3Window> mainThreadWindows = new Array<>();
+	private final Array<Lwjgl3Window> renderThreadWindows = new Array<>();
 	private Lwjgl3Window currentWindow;
 
 	private final Array<LifecycleListener> lifecycleListeners = new Array<>();
@@ -59,7 +59,6 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		initializeGlfw();
 		setApplicationLogger(new Lwjgl3ApplicationLogger());
 
-		this.listener = listener;
 		this.config = Lwjgl3ApplicationConfiguration.copy(config);
 		if (this.config.title == null) {
 			this.config.title = listener.getClass().getSimpleName();
@@ -77,7 +76,8 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		Lwjgl3Cursor.createSystemCursors();
 
 		Lwjgl3Window primaryWindow = new Lwjgl3Window(listener, config);
-		windows.add(primaryWindow);
+		mainThreadWindows.add(primaryWindow);
+		renderThreadWindows.add(primaryWindow);
 
 		registerContext(APPLICATION_CONTEXT);
 		Lwjgl3Runnables.separateRenderThread = config.separateRenderThread;
@@ -108,18 +108,11 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	private void mainThreadFunction() {
 		try {
 
-			final Array<Lwjgl3Window> activeWindows = new Array<>();
-
 			while (updating && !exceptionCaught) {
 				glfwWaitEventsTimeout(1.0);
 				executeMainThreadDelegates();
 
-				activeWindows.clear();
-				synchronized (windows) {
-					activeWindows.addAll(windows);
-				}
-
-				for (Lwjgl3Window window : activeWindows) {
+				for (Lwjgl3Window window : mainThreadWindows) {
 					executeMainThreadDelegates(window);
 				}
 
@@ -140,7 +133,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 	private void renderThreadFunction() {
 
-		Lwjgl3Window primaryWindow = windows.get(0);
+		Lwjgl3Window primaryWindow = renderThreadWindows.get(0);
 		long primaryWindowHandle = __call_main(0L, context -> primaryWindow.createWindow(0L));
 
 		if (primaryWindowHandle == 0L) {
@@ -155,7 +148,6 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			setGLDebugMessageControl(GLDebugMessageSeverity.NOTIFICATION, false);
 		}
 
-		final Array<Lwjgl3Window> activeWindows = new Array<>();
 		final Array<Lwjgl3Window> closedWindows = new Array<>();
 
 		while (rendering) {
@@ -165,7 +157,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 				glfwPollEvents();
 				executeMainThreadDelegates();
 
-				for (Lwjgl3Window window : windows) {
+				for (Lwjgl3Window window : mainThreadWindows) {
 					executeMainThreadDelegates(window);
 				}
 
@@ -179,15 +171,10 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 			graphics.update();
 
-			activeWindows.clear();
 			closedWindows.clear();
 
-			synchronized (windows) {
-				activeWindows.addAll(windows);
-			}
-
 			int numWindowsRendered = 0;
-			for (Lwjgl3Window window : activeWindows) {
+			for (Lwjgl3Window window : renderThreadWindows) {
 
 				if (shouldRequestRendering && !window.continuous) {
 					window.requestRendering();
@@ -219,15 +206,10 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 				}
 			}
 
-			rendering &= windows.size > 0;
+			rendering &= renderThreadWindows.size > 0;
 		}
 
-		closedWindows.clear();
-		synchronized (windows) {
-			closedWindows.addAll(windows);
-		}
-
-		closeWindows(closedWindows);
+		closeWindows(renderThreadWindows);
 
 		__call_main((Void) null, context -> {
 			updating = false;
@@ -237,11 +219,8 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 	private void closeWindows(Array<Lwjgl3Window> closedWindows) {
 		for (Lwjgl3Window window : closedWindows) {
-			int numWindows;
-			synchronized (windows) {
-				numWindows = windows.size;
-				windows.removeValue(window, true);
-			}
+			int	numWindows = renderThreadWindows.size;
+			renderThreadWindows.removeValue(window, true);
 			// Lifecycle listener methods have to be called before ApplicationListener methods. The
 			// application will be disposed when _all_ windows have been disposed, which is the case,
 			// when there is only 1 window left, which is in the process of being disposed.
@@ -256,6 +235,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			window.dispose();
 			__call_main((Void) null, context -> {
 				window.disposeWindow();
+				mainThreadWindows.removeValue(window, true);
 				return null;
 			});
 		}
@@ -424,15 +404,16 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 		// delay window creation until next frame, so we don't conflict with GL contexts
 		__post_render(() -> {
-			long sharedContext = windows.get(0).getWindowHandle();
-			long windowHandle = __call_main(0L, nil -> window.createWindow(sharedContext));
+			long sharedContext = renderThreadWindows.get(0).getWindowHandle();
+			long windowHandle = __call_main(0L, nil -> {
+				mainThreadWindows.add(window);
+				return window.createWindow(sharedContext);
+			});
 			if (windowHandle == 0) {
 				throw new GdxRuntimeException("Failed to create GLFW window.");
 			}
 			window.completeWindow(windowHandle);
-			synchronized (windows) {
-				windows.add(window);
-			}
+			renderThreadWindows.add(window);
 			window.notifyNewWindow();
 		});
 

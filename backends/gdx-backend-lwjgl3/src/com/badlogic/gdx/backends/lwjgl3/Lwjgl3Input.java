@@ -451,6 +451,15 @@ public class Lwjgl3Input implements Input, Disposable {
 		__post_main(window, context -> glfwSetCursorPos(context, posX, posY));
 	}
 
+	void disposeCallbacks(long handle) {
+		glfwSetKeyCallback(handle, null);
+		glfwSetCharCallback(handle, null);
+		glfwSetScrollCallback(handle, null);
+		glfwSetCursorPosCallback(handle, null);
+		glfwSetCursorEnterCallback(handle, null);
+		glfwSetMouseButtonCallback(handle, null);
+	}
+
 	@Override
 	public void dispose() {
 		keyCallback.free();

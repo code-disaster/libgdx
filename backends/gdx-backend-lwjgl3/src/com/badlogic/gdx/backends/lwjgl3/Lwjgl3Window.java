@@ -32,6 +32,7 @@ import static com.badlogic.gdx.Graphics.BufferFormat;
 import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration.HdpiMode;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.system.MemoryUtil.NULL;
 
 public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 
@@ -229,6 +230,23 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	}
 
 	void disposeWindow() {
+		input.disposeCallbacks(handle);
+		glfwSetWindowFocusCallback(handle, null);
+		glfwSetWindowIconifyCallback(handle, null);
+		glfwSetWindowMaximizeCallback(handle, null);
+		glfwSetWindowCloseCallback(handle, null);
+		glfwSetDropCallback(handle, null);
+		glfwSetWindowRefreshCallback(handle, null);
+		glfwSetFramebufferSizeCallback(handle, null);
+		glfwSetWindowPosCallback(handle, null);
+
+		glfwSetCursor(handle, NULL);
+
+		unregisterContext(handle);
+		glfwDestroyWindow(handle);
+
+		//glfwPollEvents();
+
 		input.dispose();
 		focusCallback.free();
 		iconifyCallback.free();
@@ -238,9 +256,6 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		refreshCallback.free();
 		resizeCallback.free();
 		positionCallback.free();
-
-		unregisterContext(handle);
-		glfwDestroyWindow(handle);
 	}
 
 	@Override

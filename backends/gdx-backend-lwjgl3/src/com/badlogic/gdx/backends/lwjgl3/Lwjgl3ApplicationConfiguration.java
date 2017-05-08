@@ -54,6 +54,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	PrintStream debugStream = System.err;
 
 	boolean separateRenderThread = false;
+	Thread.UncaughtExceptionHandler renderThreadUncaughtExceptionHandler;
 	
 	static Lwjgl3ApplicationConfiguration copy(Lwjgl3ApplicationConfiguration config) {
 		Lwjgl3ApplicationConfiguration copy = new Lwjgl3ApplicationConfiguration();
@@ -84,6 +85,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 		debug = config.debug;
 		debugStream = config.debugStream;
 		separateRenderThread = config.separateRenderThread;
+		renderThreadUncaughtExceptionHandler = config.renderThreadUncaughtExceptionHandler;
 	}
 	
 	/**
@@ -239,8 +241,9 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	 * {@link ApplicationListener}. Those calls require special treatment, which is managed
 	 * by the {@link Lwjgl3Runnables} class.
 	 */
-	public void enableSeparateRenderThread(boolean enable) {
+	public void enableSeparateRenderThread(boolean enable, Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
 		separateRenderThread = enable;
+		renderThreadUncaughtExceptionHandler = uncaughtExceptionHandler;
 	}
 
 	/**

@@ -84,7 +84,8 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 		if (separateRenderThread) {
 			renderThread = new Thread(this::renderThreadFunction, "gdx-render");
-			renderThread.setUncaughtExceptionHandler(this::renderThreadExceptionHandler);
+			renderThread.setUncaughtExceptionHandler(new RenderThreadUncaughtExceptionHandler(
+					config.renderThreadUncaughtExceptionHandler));
 			renderThread.start();
 
 			mainThreadFunction();
@@ -236,12 +237,6 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 				return null;
 			});
 		}
-	}
-
-	private void renderThreadExceptionHandler(Thread t, Throwable e) {
-		exceptionCaught = true;
-		glfwPostEmptyEvent();
-		error("Lwjgl3Application", "Exception caught in render thread.", e);
 	}
 
 	@Override
@@ -492,6 +487,26 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		}
 
 		return false;
+	}
+
+	private class RenderThreadUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
+
+		private final Thread.UncaughtExceptionHandler handler;
+
+		RenderThreadUncaughtExceptionHandler(Thread.UncaughtExceptionHandler handler) {
+			this.handler = handler;
+		}
+
+		@Override
+		public void uncaughtException(Thread t, Throwable e) {
+			if (handler != null) {
+				handler.uncaughtException(t, e);
+			}
+			exceptionCaught = true;
+			glfwPostEmptyEvent();
+			error("Lwjgl3Application", "Exception caught in render thread.", e);
+		}
+
 	}
 
 }

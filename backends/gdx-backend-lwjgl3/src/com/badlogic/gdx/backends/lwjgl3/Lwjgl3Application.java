@@ -95,10 +95,11 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	}
 
 	private void shutdown() {
+		glfwMakeContextCurrent(APPLICATION_CONTEXT);
 		unregisterContext(APPLICATION_CONTEXT);
 		// TODO: audio
 		Lwjgl3Cursor.disposeSystemCursors();
-		errorCallback.free();
+		glfwSetErrorCallback(null).free();
 		if (glDebugCallback != null) {
 			glDebugCallback.free();
 		}
@@ -210,11 +211,6 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		}
 
 		closeWindows(renderThreadWindows);
-
-		__call_main((Void) null, context -> {
-			updating = false;
-			return null;
-		});
 	}
 
 	private void closeWindows(Array<Lwjgl3Window> closedWindows) {
@@ -236,6 +232,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			__call_main((Void) null, context -> {
 				window.disposeWindow();
 				mainThreadWindows.removeValue(window, true);
+				updating = mainThreadWindows.size > 0;
 				return null;
 			});
 		}

@@ -121,28 +121,27 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		}
 	};
 
-	private final GLFWFramebufferSizeCallback resizeCallback = new GLFWFramebufferSizeCallback() {
+	private final GLFWWindowSizeCallback windowSizeCallback = new GLFWWindowSizeCallback() {
 		@Override
 		public void invoke(long window, int width, int height) {
-			try (MemoryStack stack = MemoryStack.stackPush()) {
-				IntBuffer x = stack.callocInt(1);
-				IntBuffer y = stack.callocInt(1);
-				glfwGetFramebufferSize(window, x, y);
-				final int backBufferWidth = x.get(0);
-				final int backBufferHeight = y.get(0);
-				glfwGetWindowSize(window, x, y);
-				final int logicalWidth = x.get(0);
-				final int logicalHeight = y.get(0);
-				__post_render(window, () -> {
-					Lwjgl3Window.this.backBufferWidth = backBufferWidth;
-					Lwjgl3Window.this.backBufferHeight = backBufferHeight;
-					Lwjgl3Window.this.logicalWidth = logicalWidth;
-					Lwjgl3Window.this.logicalHeight = logicalHeight;
-					// use getters to pass size based on HdpiMode
-					listener.resize(getWidth(), getHeight());
-					// TODO: old version calls glViewport() and glfwSwapBuffers()
-				});
-			}
+			__post_render(window, () -> {
+				Lwjgl3Window.this.logicalWidth = width;
+				Lwjgl3Window.this.logicalHeight = height;
+				// done here because GLFW sends FramebufferSizeCallback first, WindowSizeCallback second
+				// use getters to pass size based on HdpiMode
+				listener.resize(getWidth(), getHeight());
+				// TODO: old version calls glViewport() and glfwSwapBuffers()
+			});
+		}
+	};
+
+	private final GLFWFramebufferSizeCallback framebufferSizeCallback = new GLFWFramebufferSizeCallback() {
+		@Override
+		public void invoke(long window, int width, int height) {
+			__post_render(window, () -> {
+				Lwjgl3Window.this.backBufferWidth = width;
+				Lwjgl3Window.this.backBufferHeight = height;
+			});
 		}
 	};
 
@@ -177,7 +176,8 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		glfwSetWindowCloseCallback(handle, closeCallback);
 		glfwSetDropCallback(handle, dropCallback);
 		glfwSetWindowRefreshCallback(handle, refreshCallback);
-		glfwSetFramebufferSizeCallback(handle, resizeCallback);
+		glfwSetWindowSizeCallback(handle, windowSizeCallback);
+		glfwSetFramebufferSizeCallback(handle, framebufferSizeCallback);
 		glfwSetWindowPosCallback(handle, positionCallback);
 		input.setupCallbacks(handle);
 
@@ -237,6 +237,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		glfwSetWindowCloseCallback(handle, null);
 		glfwSetDropCallback(handle, null);
 		glfwSetWindowRefreshCallback(handle, null);
+		glfwSetWindowSizeCallback(handle, null);
 		glfwSetFramebufferSizeCallback(handle, null);
 		glfwSetWindowPosCallback(handle, null);
 
@@ -254,7 +255,8 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		closeCallback.free();
 		dropCallback.free();
 		refreshCallback.free();
-		resizeCallback.free();
+		windowSizeCallback.free();
+		framebufferSizeCallback.free();
 		positionCallback.free();
 	}
 

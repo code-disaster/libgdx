@@ -37,9 +37,9 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <gdx.version>1.9.3-SNAPSHOT</gdx.version>
+    <gdx.version>1.9.7-SNAPSHOT</gdx.version>
     <lwjgl.version>2.9.2</lwjgl.version>
-    <lwjgl3.version>3.0.0b-SNAPSHOT</lwjgl3.version>
+    <lwjgl3.version>3.1.2</lwjgl3.version>
   </properties>
 
   <modules>

@@ -44,6 +44,14 @@ public interface Lwjgl3WindowListener {
 	void created(Lwjgl3Window window);
 
 	/**
+	 * Called when the window position changes. The position is passed in virtual screen coordinates.
+	 *
+	 * @param x virtual screen X position
+	 * @param y virtual screen Y position
+	 */
+	void moved(int x, int y);
+
+	/**
 	 * Called when the window is iconified (i.e. its minimize button
 	 * was clicked), or when restored from the iconified state. When a window becomes
 	 * iconified, its {@link ApplicationListener} will be paused, and when restored

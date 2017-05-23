@@ -151,6 +151,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 			__post_render(window, () -> {
 				positionX = xpos;
 				positionY = ypos;
+				windowListener.moved(xpos, ypos);
 			});
 		}
 	};

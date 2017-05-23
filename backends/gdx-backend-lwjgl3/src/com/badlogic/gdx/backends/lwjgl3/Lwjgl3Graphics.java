@@ -355,7 +355,12 @@ public class Lwjgl3Graphics implements Graphics, Disposable {
 		PointerBuffer glfwMonitors = GLFW.glfwGetMonitors();
 		monitors = new Lwjgl3Monitor[glfwMonitors.limit()];
 		for (int i = 0; i < glfwMonitors.limit(); i++) {
-			monitors[i] = toLwjgl3Monitor(glfwMonitors.get(i));
+			long handle = glfwMonitors.get(i);
+			if (handle == primaryMonitor.getMonitorHandle()) {
+				monitors[i] = primaryMonitor;
+			} else {
+				monitors[i] = toLwjgl3Monitor(glfwMonitors.get(i));
+			}
 		}
 	}
 

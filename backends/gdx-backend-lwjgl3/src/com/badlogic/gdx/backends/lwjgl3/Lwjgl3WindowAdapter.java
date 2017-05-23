@@ -12,6 +12,11 @@ public class Lwjgl3WindowAdapter implements Lwjgl3WindowListener {
 	}
 
 	@Override
+	public void moved(int x, int y) {
+
+	}
+
+	@Override
 	public void iconified(boolean isIconified) {
 	}
 

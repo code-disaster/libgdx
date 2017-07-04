@@ -24,10 +24,20 @@ import com.badlogic.gdx.ApplicationListener;
  * focus loss and gain, and window close events. Can be set per window
  * via {@link Lwjgl3ApplicationConfiguration} and {@link Lwjgl3WindowConfiguration}.
  * Close events can be canceled by returning false.
- * 
+ *
  * @author badlogic
  */
 public interface Lwjgl3WindowListener {
+
+	/**
+	 * Called after GLFW window hints are configured, but before the window is created. This
+	 * can be used to setup additional window hints, or overwrite existing ones.
+	 *
+	 * This function is called from the main thread.
+	 *
+	 * @see Lwjgl3Window#createGlfwWindow(long)
+	 */
+	void configure();
 
 	/**
 	 * Called after the GLFW window is created. Before this callback is received, it's

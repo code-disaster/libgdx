@@ -587,9 +587,11 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 		}
 
+		windowListener.configure();
+
 		long windowHandle;
 		if (config.fullscreenMode != null) {
-			// glfwWindowHint(GLFW.GLFW_REFRESH_RATE, config.fullscreenMode.refreshRate);
+			glfwWindowHint(GLFW_REFRESH_RATE, config.fullscreenMode.refreshRate);
 			windowHandle = glfwCreateWindow(config.fullscreenMode.width, config.fullscreenMode.height,
 					config.title, config.fullscreenMode.getMonitorHandle(), sharedContext);
 		} else {

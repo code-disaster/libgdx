@@ -174,8 +174,11 @@ public class Lwjgl3Runnables {
 	private static void delegateToMainThread(long context, WindowDelegate delegate) {
 		if (separateRenderThread) {
 			synchronized (mainThreadDelegates) {
-				mainThreadDelegates.get(context).add(delegate);
-				glfwPostEmptyEvent();
+				Array<WindowDelegate> delegates = mainThreadDelegates.get(context);
+				if (delegates != null) {
+					delegates.add(delegate);
+					glfwPostEmptyEvent();
+				}
 			}
 		} else {
 			delegate.run(context);
@@ -191,12 +194,15 @@ public class Lwjgl3Runnables {
 			AtomicReference<R> result = new AtomicReference<>(defaultValue);
 			CountDownLatch latch = new CountDownLatch(1);
 			synchronized (mainThreadDelegates) {
-				mainThreadDelegates.get(context).add(ctx -> {
-					R r = delegate.call(ctx);
-					result.set(r);
-					latch.countDown();
-				});
-				glfwPostEmptyEvent();
+				Array<WindowDelegate> delegates = mainThreadDelegates.get(context);
+				if (delegates != null) {
+					delegates.add(ctx -> {
+						R r = delegate.call(ctx);
+						result.set(r);
+						latch.countDown();
+					});
+					glfwPostEmptyEvent();
+				}
 			}
 			long current = renderThreadContext;
 			boolean needRelock = context != APPLICATION_CONTEXT && context == current;
@@ -325,7 +331,10 @@ public class Lwjgl3Runnables {
 
 	private static void delegateToRenderThread(long context, Runnable runnable) {
 		synchronized (renderThreadRunnables) {
-			renderThreadRunnables.get(context).add(runnable);
+			Array<Runnable> runnables = renderThreadRunnables.get(context);
+			if (runnables != null) {
+				runnables.add(runnable);
+			}
 		}
 	}
 

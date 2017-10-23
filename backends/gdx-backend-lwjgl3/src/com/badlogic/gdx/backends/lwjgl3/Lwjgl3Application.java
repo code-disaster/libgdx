@@ -101,8 +101,10 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		// TODO: audio
 		Lwjgl3Cursor.disposeSystemCursors();
 		glfwSetErrorCallback(null).free();
+		errorCallback = null;
 		if (glDebugCallback != null) {
 			glDebugCallback.free();
+			glDebugCallback = null;
 		}
 		glfwTerminate();
 	}
@@ -417,6 +419,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			Lwjgl3NativesLoader.load();
 			errorCallback = GLFWErrorCallback.createPrint(System.err);
 			glfwSetErrorCallback(errorCallback);
+			glfwInitHint(GLFW_JOYSTICK_HAT_BUTTONS, GLFW_FALSE);
 			if (!glfwInit()) {
 				throw new GdxRuntimeException("Failed to initialize GLFW");
 			}

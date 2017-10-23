@@ -139,6 +139,12 @@ public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
 		}
 	}
 
+	void hatChanged (Lwjgl3Controller controller, int hatCode, PovDirection value) {
+		for (ControllerListener listener : listeners) {
+			listener.povMoved(controller, hatCode, value);
+		}
+	}
+
 	@Override
 	public Array<ControllerListener> getListeners() {
 		return listeners;

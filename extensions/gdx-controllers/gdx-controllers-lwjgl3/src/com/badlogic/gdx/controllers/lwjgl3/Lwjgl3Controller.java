@@ -18,6 +18,7 @@ public class Lwjgl3Controller implements Controller {
 	final int index;
 	final float[] axisState;
 	final byte[] buttonState;
+	final byte[] hatState;
 	final String name;
 
 	public Lwjgl3Controller (Lwjgl3ControllerManager manager, int index) {
@@ -25,6 +26,7 @@ public class Lwjgl3Controller implements Controller {
 		this.index = index;
 		this.axisState = new float[glfwGetJoystickAxes(index).limit()];
 		this.buttonState = new byte[glfwGetJoystickButtons(index).limit()];
+		this.hatState = new byte[glfwGetJoystickHats(index).limit()];
 		this.name = glfwGetJoystickName(index);
 	}
 
@@ -37,6 +39,11 @@ public class Lwjgl3Controller implements Controller {
 
 		ByteBuffer buttons = glfwGetJoystickButtons(index);
 		if (buttons == null) {
+			return false;
+		}
+
+		ByteBuffer hats = glfwGetJoystickHats(index);
+		if (hats == null) {
 			return false;
 		}
 
@@ -53,6 +60,14 @@ public class Lwjgl3Controller implements Controller {
 			if (state != buttonState[i]) {
 				buttonChanged(i, state);
 				buttonState[i] = state;
+			}
+		}
+
+		for (int i = 0; i < hats.limit(); i++) {
+			byte state = hats.get(i);
+			if (state != hatState[i]) {
+				hatChanged(i);
+				hatState[i] = state;
 			}
 		}
 
@@ -79,6 +94,16 @@ public class Lwjgl3Controller implements Controller {
 				}
 			}
 			manager.buttonChanged(this, index, pressed);
+		});
+	}
+
+	private void hatChanged (int index) {
+		__post_render(() -> {
+			PovDirection pov = getPov(index);
+			for (ControllerListener listener : listeners) {
+				listener.povMoved(this, index, pov);
+			}
+			manager.hatChanged(this, index, pov);
 		});
 	}
 
@@ -110,7 +135,27 @@ public class Lwjgl3Controller implements Controller {
 
 	@Override
 	public PovDirection getPov (int povCode) {
-		return PovDirection.center;
+		if (povCode < 0 || povCode >= hatState.length) return PovDirection.center;
+		switch (hatState[povCode]) {
+			case GLFW_HAT_UP:
+				return PovDirection.north;
+			case GLFW_HAT_DOWN:
+				return PovDirection.south;
+			case GLFW_HAT_RIGHT:
+				return PovDirection.east;
+			case GLFW_HAT_LEFT:
+				return PovDirection.west;
+			case GLFW_HAT_RIGHT_UP:
+				return PovDirection.northEast;
+			case GLFW_HAT_RIGHT_DOWN:
+				return PovDirection.southEast;
+			case GLFW_HAT_LEFT_UP:
+				return PovDirection.northWest;
+			case GLFW_HAT_LEFT_DOWN:
+				return PovDirection.southWest;
+			default:
+				return PovDirection.center;
+		}
 	}
 
 	@Override

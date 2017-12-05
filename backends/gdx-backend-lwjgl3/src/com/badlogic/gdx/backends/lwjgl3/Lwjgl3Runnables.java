@@ -202,6 +202,9 @@ public class Lwjgl3Runnables {
 						latch.countDown();
 					});
 					glfwPostEmptyEvent();
+				} else {
+					result.set(defaultValue);
+					latch.countDown();
 				}
 			}
 			long current = renderThreadContext;

@@ -177,8 +177,8 @@ public class Lwjgl3Runnables {
 				Array<WindowDelegate> delegates = mainThreadDelegates.get(context);
 				if (delegates != null) {
 					delegates.add(delegate);
-					glfwPostEmptyEvent();
 				}
+				glfwPostEmptyEvent();
 			}
 		} else {
 			delegate.run(context);
@@ -201,11 +201,11 @@ public class Lwjgl3Runnables {
 						result.set(r);
 						latch.countDown();
 					});
-					glfwPostEmptyEvent();
 				} else {
 					result.set(defaultValue);
 					latch.countDown();
 				}
+				glfwPostEmptyEvent();
 			}
 			long current = renderThreadContext;
 			boolean needRelock = context != APPLICATION_CONTEXT && context == current;

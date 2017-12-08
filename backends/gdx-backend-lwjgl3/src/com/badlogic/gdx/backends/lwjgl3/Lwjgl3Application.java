@@ -55,6 +55,9 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 	private static GLFWErrorCallback errorCallback;
 	private static Callback glDebugCallback;
 
+	// by default, wake up main thread and check for events every 50 ms
+	private static final double MAIN_THREAD_WAIT_SECONDS = 0.05;
+
 	public Lwjgl3Application(ApplicationListener listener, Lwjgl3ApplicationConfiguration config) {
 		initializeGlfw();
 		setApplicationLogger(new Lwjgl3ApplicationLogger());
@@ -117,7 +120,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		try {
 
 			while (updating && !exceptionCaught) {
-				glfwWaitEventsTimeout(1.0);
+				glfwWaitEventsTimeout(MAIN_THREAD_WAIT_SECONDS);
 
 				// update TimerThread singleton here in main thread
 				Timer.thread(false).run();
@@ -226,7 +229,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 	private void closeWindows(Array<Lwjgl3Window> closedWindows) {
 		for (Lwjgl3Window window : closedWindows) {
-			int	numWindows = renderThreadWindows.size;
+			int numWindows = renderThreadWindows.size;
 			renderThreadWindows.removeValue(window, true);
 			// Lifecycle listener methods have to be called before ApplicationListener methods. The
 			// application will be disposed when _all_ windows have been disposed, which is the case,

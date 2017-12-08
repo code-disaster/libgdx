@@ -193,6 +193,7 @@ public class Lwjgl3Runnables {
 		if (separateRenderThread) {
 			AtomicReference<R> result = new AtomicReference<>(defaultValue);
 			CountDownLatch latch = new CountDownLatch(1);
+			boolean needRelock = context != APPLICATION_CONTEXT;
 			synchronized (mainThreadDelegates) {
 				Array<WindowDelegate> delegates = mainThreadDelegates.get(context);
 				if (delegates != null) {
@@ -204,11 +205,12 @@ public class Lwjgl3Runnables {
 				} else {
 					result.set(defaultValue);
 					latch.countDown();
+					needRelock = false;
 				}
 				glfwPostEmptyEvent();
 			}
 			long current = renderThreadContext;
-			boolean needRelock = context != APPLICATION_CONTEXT && context == current;
+			needRelock = needRelock && context == current;
 			if (needRelock) {
 				//
 				// We are in the render thread, and in context of a window, so we own its context already. If we
@@ -220,7 +222,11 @@ public class Lwjgl3Runnables {
 				//
 				renderThreadContext = APPLICATION_CONTEXT;
 				glfwMakeContextCurrent(APPLICATION_CONTEXT);
-				contextLocks.get(context).unlock();
+				Lock lock;
+				synchronized (contextLocks) {
+					lock = contextLocks.get(context);
+				}
+				lock.unlock();
 			}
 			try {
 				latch.await();
@@ -228,7 +234,11 @@ public class Lwjgl3Runnables {
 				result.set(defaultValue);
 			}
 			if (needRelock) {
-				contextLocks.get(context).lock();
+				Lock lock;
+				synchronized (contextLocks) {
+					lock = contextLocks.get(context);
+				}
+				lock.lock();
 				renderThreadContext = context;
 				glfwMakeContextCurrent(context);
 			}

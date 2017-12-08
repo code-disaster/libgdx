@@ -37,23 +37,28 @@ public class Timer {
 	 * instance. */
 	static public Timer instance () {
 		synchronized (threadLock) {
-			TimerThread thread = thread();
+			TimerThread thread = thread(true);
 			if (thread.instance == null) thread.instance = new Timer();
 			return thread.instance;
 		}
 	}
 
-	static private TimerThread thread () {
+	public static TimerThread thread (boolean fork) {
 		synchronized (threadLock) {
 			if (thread == null || thread.files != Gdx.files) {
-				if (thread != null) thread.dispose();
-				thread = new TimerThread();
+				if (thread != null) {
+					if (thread.fork != fork) {
+						throw new GdxRuntimeException("Recreating timer thread with different fork parameter");
+					}
+					thread.dispose();
+				}
+				thread = new TimerThread(fork);
 			}
 			return thread;
 		}
 	}
 
-	private final Array<Task> tasks = new Array(false, 8);
+	private final Array<Task> tasks = new Array<Task>(false, 8);
 
 	public Timer () {
 		start();
@@ -95,14 +100,14 @@ public class Timer {
 	/** Stops the timer, tasks will not be executed and time that passes will not be applied to the task delays. */
 	public void stop () {
 		synchronized (threadLock) {
-			thread().instances.removeValue(this, true);
+			thread(true).instances.removeValue(this, true);
 		}
 	}
 
 	/** Starts the timer if it was stopped. */
 	public void start () {
 		synchronized (threadLock) {
-			TimerThread thread = thread();
+			TimerThread thread = thread(true);
 			Array<Timer> instances = thread.instances;
 			if (instances.contains(this, true)) return;
 			instances.add(this);
@@ -227,20 +232,24 @@ public class Timer {
 
 	/** Manages a single thread for updating timers. Uses libgdx application events to pause, resume, and dispose the thread.
 	 * @author Nathan Sweet */
-	static class TimerThread implements Runnable, LifecycleListener {
+	public static class TimerThread implements Runnable, LifecycleListener {
 		final Files files;
-		final Array<Timer> instances = new Array(1);
+		final Array<Timer> instances = new Array<Timer>(1);
 		Timer instance;
 		private long pauseMillis;
+		final boolean fork;
 
-		public TimerThread () {
+		TimerThread (boolean fork) {
 			files = Gdx.files;
 			Gdx.app.addLifecycleListener(this);
 			resume();
 
-			Thread thread = new Thread(this, "Timer");
-			thread.setDaemon(true);
-			thread.start();
+			if (fork) {
+				Thread thread = new Thread(this, "Timer");
+				thread.setDaemon(true);
+				thread.start();
+			}
+			this.fork = fork;
 		}
 
 		public void run () {

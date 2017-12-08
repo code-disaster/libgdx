@@ -86,9 +86,8 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		Lwjgl3Runnables.separateRenderThread = config.separateRenderThread;
 
 		if (separateRenderThread) {
-
 			// enforce TimerThread creation w/o spawning extra thread
-			Timer.thread(false);
+			Timer.thread(false, 0);
 
 			renderThread = new Thread(this::renderThreadFunction, "gdx-render");
 			renderThread.setUncaughtExceptionHandler(new RenderThreadUncaughtExceptionHandler(
@@ -96,6 +95,8 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 			renderThread.start();
 
 			mainThreadFunction();
+
+			Timer.thread().dispose();
 		} else {
 			renderThread = null;
 			renderThreadFunction();
@@ -123,7 +124,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 				glfwWaitEventsTimeout(MAIN_THREAD_WAIT_SECONDS);
 
 				// update TimerThread singleton here in main thread
-				Timer.thread(false).run();
+				Timer.thread(false, 0).run();
 
 				executeMainThreadDelegates();
 

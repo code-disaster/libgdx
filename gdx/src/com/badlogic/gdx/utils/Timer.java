@@ -35,22 +35,36 @@ public class Timer {
 	 * instance. */
 	static public Timer instance () {
 		synchronized (threadLock) {
-			TimerThread thread = thread(true);
+			TimerThread thread = thread();
 			if (thread.instance == null) thread.instance = new Timer();
 			return thread.instance;
 		}
 	}
 
-	public static TimerThread thread (boolean fork) {
+	public static TimerThread thread () {
+		return thread(true, 5000);
+	}
+
+	/** Create the TimerThread instance singleton. Can be invoked before any call to {@link Timer#instance()} to
+	 * customize thread creation parameters.
+	 *
+	 * If called with fork=false, the caller must ensure to invoke {@link TimerThread#run()} regularly. To avoid
+	 * blocking the calling thread, use waitMillis=0.
+	 *
+	 * @param fork       true to create daemon thread
+	 * @param waitMillis wait time in milliseconds
+	 * @return the TimerThread singleton
+	 */
+	public static TimerThread thread (boolean fork, long waitMillis) {
 		synchronized (threadLock) {
 			if (thread == null || thread.files != Gdx.files) {
 				if (thread != null) {
 					if (thread.fork != fork) {
-						throw new GdxRuntimeException("Recreating timer thread with different fork parameter");
+						throw new IllegalArgumentException("Recreating timer thread with different fork parameter");
 					}
 					thread.dispose();
 				}
-				thread = new TimerThread(fork);
+				thread = new TimerThread(fork, waitMillis);
 			}
 			return thread;
 		}
@@ -99,14 +113,14 @@ public class Timer {
 	/** Stops the timer, tasks will not be executed and time that passes will not be applied to the task delays. */
 	public void stop () {
 		synchronized (threadLock) {
-			thread(true).instances.removeValue(this, true);
+			thread().instances.removeValue(this, true);
 		}
 	}
 
 	/** Starts the timer if it was stopped. */
 	public void start () {
 		synchronized (threadLock) {
-			TimerThread thread = thread(true);
+			TimerThread thread = thread();
 			Array<Timer> instances = thread.instances;
 			if (instances.contains(this, true)) return;
 			instances.add(this);
@@ -251,11 +265,12 @@ public class Timer {
 	public static class TimerThread implements Runnable, LifecycleListener {
 		final Files files;
 		final Array<Timer> instances = new Array<Timer>(1);
+		final boolean fork;
 		Timer instance;
 		private long pauseMillis;
-		final boolean fork;
+		private final long waitMillis;
 
-		TimerThread (boolean fork) {
+		TimerThread (boolean fork, long waitMillis) {
 			files = Gdx.files;
 			Gdx.app.addLifecycleListener(this);
 			resume();
@@ -266,34 +281,44 @@ public class Timer {
 				thread.start();
 			}
 			this.fork = fork;
+			this.waitMillis = waitMillis;
 		}
 
 		public void run () {
-			while (true) {
-				synchronized (threadLock) {
-					if (thread != this || files != Gdx.files) break;
+			if (fork) {
+				while (true) {
+					if (!run0()) break;
+				}
+				dispose();
+			} else {
+				run0();
+			}
+		}
 
-					long waitMillis = 5000;
-					if (pauseMillis == 0) {
-						long timeMillis = System.nanoTime() / 1000000;
-						for (int i = 0, n = instances.size; i < n; i++) {
-							try {
-								waitMillis = instances.get(i).update(timeMillis, waitMillis);
-							} catch (Throwable ex) {
-								throw new GdxRuntimeException("Task failed: " + instances.get(i).getClass().getName(), ex);
-							}
+		private boolean run0 () {
+			synchronized (threadLock) {
+				if (thread != this || files != Gdx.files) return false;
+
+				long waitMillis = this.waitMillis;
+				if (pauseMillis == 0) {
+					long timeMillis = System.nanoTime() / 1000000;
+					for (int i = 0, n = instances.size; i < n; i++) {
+						try {
+							waitMillis = instances.get(i).update(timeMillis, waitMillis);
+						} catch (Throwable ex) {
+							throw new GdxRuntimeException("Task failed: " + instances.get(i).getClass().getName(), ex);
 						}
 					}
+				}
 
-					if (thread != this || files != Gdx.files) break;
+				if (thread != this || files != Gdx.files) return false;
 
-					try {
-						if (waitMillis > 0) threadLock.wait(waitMillis);
-					} catch (InterruptedException ignored) {
-					}
+				try {
+					if (waitMillis > 0) threadLock.wait(waitMillis);
+				} catch (InterruptedException ignored) {
 				}
 			}
-			dispose();
+			return true;
 		}
 
 		public void resume () {
@@ -315,7 +340,7 @@ public class Timer {
 
 		public void dispose () { // OK to call multiple times.
 			synchronized (threadLock) {
-				if (thread == this) thread = null;
+				if (thread == this && thread.fork) thread = null;
 				instances.clear();
 				threadLock.notifyAll();
 			}

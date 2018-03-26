@@ -442,23 +442,16 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		input.reset();
 		final int x = positionX;
 		final int y = positionY;
+		final int w = logicalWidth;
+		final int h = logicalHeight;
 		return __call_main(this, false, context -> {
 			if (config.fullscreenMode == null) {
 				config.setWindowPosition(x, y);
-				glfwSetWindowMonitor(context, displayMode.getMonitorHandle(),
-						0, 0, displayMode.width, displayMode.height, displayMode.refreshRate);
-			} else {
-				Lwjgl3DisplayMode currentMode = config.fullscreenMode;
-				if (currentMode.getMonitorHandle() == displayMode.getMonitorHandle()
-						&& currentMode.refreshRate == displayMode.refreshRate) {
-					// same monitor and refresh rate
-					glfwSetWindowSize(context, displayMode.width, displayMode.height);
-				} else {
-					// different monitor and/or refresh rate
-					glfwSetWindowMonitor(context, displayMode.getMonitorHandle(),
-							0, 0, displayMode.width, displayMode.height, displayMode.refreshRate);
-				}
+				config.setWindowedMode(w, h);
 			}
+			config.setFullscreenMode(displayMode);
+			glfwSetWindowMonitor(context, displayMode.getMonitorHandle(),
+					0, 0, displayMode.width, displayMode.height, displayMode.refreshRate);
 			return true;
 		});
 	}
@@ -467,14 +460,16 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		input.reset();
 		final int x = positionX;
 		final int y = positionY;
+		final int w = width;
+		final int h = height;
 		return __call_main(this, false, context -> {
 			if (config.fullscreenMode == null) {
-				glfwSetWindowSize(context, width, height);
+				glfwSetWindowSize(context, w, h);
 			} else {
-				glfwSetWindowMonitor(context, 0, x, y, width, height, GLFW_DONT_CARE);
-				config.fullscreenMode = null;
+				glfwSetWindowMonitor(context, 0, x, y, w, h, GLFW_DONT_CARE);
 			}
-			config.setWindowedMode(width, height);
+			config.setWindowedMode(w, h);
+			config.setFullscreenMode(null);
 			return true;
 		});
 	}

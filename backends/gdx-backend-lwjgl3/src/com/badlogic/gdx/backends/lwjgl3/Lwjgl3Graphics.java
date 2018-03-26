@@ -46,7 +46,6 @@ public class Lwjgl3Graphics implements Graphics, Disposable {
 	private Lwjgl3Window currentWindow;
 
 	static Lwjgl3Monitor primaryMonitor;
-	static Lwjgl3DisplayMode primaryMonitorDisplayMode;
 	static Lwjgl3Monitor[] monitors;
 
 	Lwjgl3Graphics(Lwjgl3ApplicationConfiguration config) {
@@ -357,10 +356,6 @@ public class Lwjgl3Graphics implements Graphics, Disposable {
 
 		long monitor = glfwGetPrimaryMonitor();
 		primaryMonitor = toLwjgl3Monitor(monitor);
-
-		GLFWVidMode mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-		primaryMonitorDisplayMode = new Lwjgl3DisplayMode(primaryMonitor, mode.width(), mode.height(),
-				mode.refreshRate(), mode.redBits() + mode.greenBits() + mode.blueBits());
 
 		PointerBuffer glfwMonitors = GLFW.glfwGetMonitors();
 		monitors = new Lwjgl3Monitor[glfwMonitors.limit()];

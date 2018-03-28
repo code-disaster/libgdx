@@ -349,6 +349,8 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	 * the first monitor in the virtual surface.
 	 **/
 	public void setPosition(int x, int y) {
+		positionX = x;
+		positionY = y;
 		__post_main(handle, context -> glfwSetWindowPos(context, x, y));
 	}
 

@@ -414,4 +414,8 @@ public class Lwjgl3Runnables {
 		}
 	}
 
+	public static boolean isSeparateRenderThread() {
+		return separateRenderThread;
+	}
+
 }

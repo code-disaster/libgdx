@@ -1,13 +1,13 @@
 package com.badlogic.gdx.controllers.lwjgl3;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables;
 import com.badlogic.gdx.controllers.*;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Disposable;
 import org.lwjgl.glfw.GLFWJoystickCallback;
 
-import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__call_main;
-import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_main;
-import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_render;
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.*;
 import static org.lwjgl.glfw.GLFW.*;
 
 public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
@@ -62,7 +62,11 @@ public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
 			}
 		}
 
-		__post_main(this::update);
+		if (Lwjgl3Runnables.isSeparateRenderThread()) {
+			__post_main(this::update);
+		} else {
+			Gdx.app.postRunnable(this::update);
+		}
 	}
 
 	private void connected(int index) {
@@ -139,7 +143,7 @@ public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
 		}
 	}
 
-	void hatChanged (Lwjgl3Controller controller, int hatCode, PovDirection value) {
+	void hatChanged(Lwjgl3Controller controller, int hatCode, PovDirection value) {
 		for (ControllerListener listener : listeners) {
 			listener.povMoved(controller, hatCode, value);
 		}

@@ -35,7 +35,6 @@ public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
 				}
 			}
 			glfwSetJoystickCallback(joystickCallback);
-			update();
 			return null;
 		});
 	}
@@ -49,7 +48,7 @@ public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
 		});
 	}
 
-	private void update() {
+	void update() {
 		polledControllers.clear();
 		synchronized (controllers) {
 			polledControllers.addAll(controllers);
@@ -62,10 +61,10 @@ public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
 			}
 		}
 
-		if (Lwjgl3Runnables.isSeparateRenderThread()) {
-			__post_main(this::update);
-		} else {
-			Gdx.app.postRunnable(this::update);
+		if (polledControllers.size > 0) {
+			if (Lwjgl3Runnables.isSeparateRenderThread()) {
+				glfwPostEmptyEvent();
+			}
 		}
 	}
 

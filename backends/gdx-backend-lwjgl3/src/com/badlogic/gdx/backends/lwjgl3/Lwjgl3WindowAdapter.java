@@ -8,6 +8,10 @@ package com.badlogic.gdx.backends.lwjgl3;
  */
 public class Lwjgl3WindowAdapter implements Lwjgl3WindowListener {
 	@Override
+	public void poll() {
+	}
+
+	@Override
 	public void configure() {
 	}
 

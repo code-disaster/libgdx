@@ -316,6 +316,10 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		}
 	}
 
+	void poll() {
+		windowListener.poll();
+	}
+
 	boolean update(boolean shouldRender) {
 
 		shouldRender |= continuous;

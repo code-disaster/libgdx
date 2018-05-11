@@ -1,12 +1,12 @@
 /*******************************************************************************
  * Copyright 2011 See AUTHORS file.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,6 +28,13 @@ import com.badlogic.gdx.ApplicationListener;
  * @author badlogic
  */
 public interface Lwjgl3WindowListener {
+
+	/**
+	 * Called from the main thread after runnables have been processed.
+	 *
+	 * Can be used for custom event updates/processing which must be done in the main thread.
+	 */
+	void poll();
 
 	/**
 	 * Called after GLFW window hints are configured, but before the window is created. This
@@ -66,11 +73,11 @@ public interface Lwjgl3WindowListener {
 	 * was clicked), or when restored from the iconified state. When a window becomes
 	 * iconified, its {@link ApplicationListener} will be paused, and when restored
 	 * it will be resumed.
-	 * 
+	 *
 	 * @param isIconified True if window is iconified, false if it leaves the iconified state
 	 */
 	void iconified(boolean isIconified);
-	
+
 	/**
 	 * Called when the window is maximized, or restored from the maximized state.
 	 *
@@ -84,22 +91,22 @@ public interface Lwjgl3WindowListener {
 	 * called.
 	 */
 	void focusLost();
-	
+
 	/**
 	 * Called when the window gained focus.
 	 */
-	void focusGained();		
-	
+	void focusGained();
+
 	/** Called when the user requested to close the window, e.g. clicking
 	 * the close button or pressing the window closing keyboard shortcut.
 	 *
 	 * @return whether the window should actually close **/
 	boolean closeRequested();
-	
+
 	/**
 	 * Called when external files are dropped into the window,
 	 * e.g from the Desktop.
-	 * 
+	 *
 	 * @param files array with absolute paths to the files
 	 */
 	void filesDropped(String[] files);

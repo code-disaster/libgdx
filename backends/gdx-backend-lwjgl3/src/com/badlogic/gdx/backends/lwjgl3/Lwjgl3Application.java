@@ -130,6 +130,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 
 				for (Lwjgl3Window window : mainThreadWindows) {
 					executeMainThreadDelegates(window);
+					window.poll();
 				}
 
 				__context_main(APPLICATION_CONTEXT);

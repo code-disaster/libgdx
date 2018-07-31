@@ -17,7 +17,6 @@
 package com.badlogic.gdx.graphics.glutils;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Graphics.GraphicsType;
 import com.badlogic.gdx.graphics.GL20;
 
 /** To deal with HDPI monitors properly, use the glViewport and glScissor functions of this class instead of directly calling
@@ -27,11 +26,14 @@ import com.badlogic.gdx.graphics.GL20;
  * 
  * @author badlogic */
 public class HdpiUtils {
+
+	public static boolean enabled = true;
+
 	/** Calls {@link GL20#glScissor(int, int, int, int)}, expecting the coordinates and sizes given in logical coordinates and
 	 * automatically converts them to backbuffer coordinates, which may be bigger on HDPI screens. */
 	public static void glScissor (int x, int y, int width, int height) {
-		if (Gdx.graphics.getWidth() != Gdx.graphics.getBackBufferWidth()
-			|| Gdx.graphics.getHeight() != Gdx.graphics.getBackBufferHeight()) {
+		if (enabled && (Gdx.graphics.getWidth() != Gdx.graphics.getBackBufferWidth()
+			|| Gdx.graphics.getHeight() != Gdx.graphics.getBackBufferHeight())) {
 			Gdx.gl.glScissor(toBackBufferX(x), toBackBufferY(y), toBackBufferX(width), toBackBufferY(height));
 		} else {
 			Gdx.gl.glScissor(x, y, width, height);
@@ -41,8 +43,8 @@ public class HdpiUtils {
 	/** Calls {@link GL20#glViewport(int, int, int, int)}, expecting the coordinates and sizes given in logical coordinates and
 	 * automatically converts them to backbuffer coordinates, which may be bigger on HDPI screens. */
 	public static void glViewport (int x, int y, int width, int height) {
-		if (Gdx.graphics.getWidth() != Gdx.graphics.getBackBufferWidth()
-			|| Gdx.graphics.getHeight() != Gdx.graphics.getBackBufferHeight()) {
+		if (enabled && (Gdx.graphics.getWidth() != Gdx.graphics.getBackBufferWidth()
+			|| Gdx.graphics.getHeight() != Gdx.graphics.getBackBufferHeight())) {
 			Gdx.gl.glViewport(toBackBufferX(x), toBackBufferY(y), toBackBufferX(width), toBackBufferY(height));
 		} else {
 			Gdx.gl.glViewport(x, y, width, height);

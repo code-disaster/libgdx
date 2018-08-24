@@ -488,7 +488,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 	 * Brings the window to front and sets input focus. The window should already be visible and not iconified.
 	 */
 	public void focusWindow() {
-		GLFW.glfwFocusWindow(handle);
+		glfwFocusWindow(handle);
 	}
 	
 	/**
@@ -568,6 +568,7 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		glfwWindowHint(GLFW_RESIZABLE, config.windowResizable ? GLFW_TRUE : GLFW_FALSE);
 		glfwWindowHint(GLFW_MAXIMIZED, config.windowMaximized ? GLFW_TRUE : GLFW_FALSE);
+		glfwWindowHint(GLFW_AUTO_ICONIFY, config.autoIconify ? GLFW_TRUE : GLFW_FALSE);
 
 		if (sharedContext == 0) {
 			glfwWindowHint(GLFW_RED_BITS, config.r);

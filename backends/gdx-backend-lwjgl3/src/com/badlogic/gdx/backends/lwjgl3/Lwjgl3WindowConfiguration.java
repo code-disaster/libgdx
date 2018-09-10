@@ -17,6 +17,7 @@
 package com.badlogic.gdx.backends.lwjgl3;
 
 import com.badlogic.gdx.Files.FileType;
+import com.badlogic.gdx.Graphics;
 import com.badlogic.gdx.Graphics.DisplayMode;
 import com.badlogic.gdx.graphics.Color;
 
@@ -39,7 +40,8 @@ public class Lwjgl3WindowConfiguration {
 	String title = "";
 	Color initialBackgroundColor = Color.BLACK;
 	boolean initialVisible = true;
-	
+	boolean vSyncEnabled = true;
+
 	void setWindowConfiguration (Lwjgl3WindowConfiguration config){
 		windowX = config.windowX;
 		windowY = config.windowY;
@@ -61,6 +63,7 @@ public class Lwjgl3WindowConfiguration {
 		title = config.title;
 		initialBackgroundColor = config.initialBackgroundColor;
 		initialVisible = config.initialVisible;
+		vSyncEnabled = config.vSyncEnabled;
 	}
 	
 	/**
@@ -181,5 +184,13 @@ public class Lwjgl3WindowConfiguration {
 	 */
 	public void setInitialBackgroundColor(Color color) {
 		initialBackgroundColor = color;
+	}
+
+	/**
+	 * Sets whether to use vsync. This setting can be changed anytime at runtime
+	 * via {@link Graphics#setVSync(boolean)}.
+	 */
+	public void useVsync(boolean vsync) {
+		this.vSyncEnabled = vsync;
 	}
 }

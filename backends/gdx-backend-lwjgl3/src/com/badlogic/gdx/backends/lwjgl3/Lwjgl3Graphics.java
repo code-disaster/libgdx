@@ -22,7 +22,6 @@ import com.badlogic.gdx.graphics.glutils.GLVersion;
 import com.badlogic.gdx.utils.Disposable;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
-import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.IntBuffer;

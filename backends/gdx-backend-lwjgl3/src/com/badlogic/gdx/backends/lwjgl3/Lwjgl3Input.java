@@ -19,6 +19,7 @@ package com.badlogic.gdx.backends.lwjgl3;
 import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.glutils.HdpiMode;
 import com.badlogic.gdx.utils.Disposable;
+import com.badlogic.gdx.utils.TimeUtils;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.*;
 
@@ -100,11 +101,32 @@ public class Lwjgl3Input implements Input, Disposable {
 	};
 
 	private final GLFWScrollCallback scrollCallback = new GLFWScrollCallback() {
+		private final long pauseTime = 250000000L; //250ms
+		private float scrollYRemainder;
+		private long lastScrollEventTime;
+
 		@Override
-		public void invoke(long handle, double xoffset, double yoffset) {
+		public void invoke(long handle, double scrollX, double scrollY) {
 			__post_render(handle, () -> {
 				window.requestRendering();
-				eventQueue.scrolled((int) -Math.signum(yoffset));
+				if (scrollYRemainder > 0 && scrollY < 0 || scrollYRemainder < 0 && scrollY > 0 ||
+						TimeUtils.nanoTime() - lastScrollEventTime > pauseTime) {
+					// fire a scroll event immediately:
+					//  - if the scroll direction changes;
+					//  - if the user did not move the wheel for more than 250ms
+					scrollYRemainder = 0;
+					int scrollAmount = (int) -Math.signum(scrollY);
+					eventQueue.scrolled(scrollAmount);
+					lastScrollEventTime = TimeUtils.nanoTime();
+				} else {
+					scrollYRemainder += scrollY;
+					while (Math.abs(scrollYRemainder) >= 1) {
+						int scrollAmount = (int) -Math.signum(scrollY);
+						eventQueue.scrolled(scrollAmount);
+						lastScrollEventTime = TimeUtils.nanoTime();
+						scrollYRemainder += scrollAmount;
+					}
+				}
 			});
 		}
 	};
@@ -310,12 +332,12 @@ public class Lwjgl3Input implements Input, Disposable {
 	}
 
 	@Override
-	public float getPressure () {
+	public float getPressure() {
 		return getPressure(0);
 	}
 
 	@Override
-	public float getPressure (int pointer) {
+	public float getPressure(int pointer) {
 		return isTouched(pointer) ? 1 : 0;
 	}
 

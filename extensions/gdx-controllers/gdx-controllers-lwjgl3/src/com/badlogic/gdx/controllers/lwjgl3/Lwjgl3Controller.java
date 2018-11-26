@@ -77,7 +77,7 @@ public class Lwjgl3Controller implements Controller {
 	private void axisChanged (int index, float state) {
 		__post_render(() -> {
 			for (ControllerListener listener : listeners) {
-				listener.axisMoved(this, index, state);
+				if (listener.axisMoved(this, index, state)) break;
 			}
 			manager.axisChanged(this, index, state);
 		});
@@ -88,9 +88,9 @@ public class Lwjgl3Controller implements Controller {
 			boolean pressed = state == GLFW_PRESS;
 			for (ControllerListener listener : listeners) {
 				if (pressed) {
-					listener.buttonDown(this, index);
+					if (listener.buttonDown(this, index)) break;
 				} else {
-					listener.buttonUp(this, index);
+					if (listener.buttonUp(this, index)) break;
 				}
 			}
 			manager.buttonChanged(this, index, pressed);
@@ -101,7 +101,7 @@ public class Lwjgl3Controller implements Controller {
 		__post_render(() -> {
 			PovDirection pov = getPov(index);
 			for (ControllerListener listener : listeners) {
-				listener.povMoved(this, index, pov);
+				if (listener.povMoved(this, index, pov)) break;
 			}
 			manager.hatChanged(this, index, pov);
 		});

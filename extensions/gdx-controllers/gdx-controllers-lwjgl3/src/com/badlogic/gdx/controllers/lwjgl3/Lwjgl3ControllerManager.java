@@ -29,11 +29,6 @@ public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
 
 	public Lwjgl3ControllerManager() {
 		__call_main(null, handle -> {
-			for (int i = GLFW_JOYSTICK_1; i < GLFW_JOYSTICK_LAST; i++) {
-				if (glfwJoystickPresent(i)) {
-					controllers.add(new Lwjgl3Controller(this, i));
-				}
-			}
 			glfwSetJoystickCallback(joystickCallback);
 			return null;
 		});
@@ -128,23 +123,23 @@ public class Lwjgl3ControllerManager implements ControllerManager, Disposable {
 
 	void axisChanged(Lwjgl3Controller controller, int axisCode, float value) {
 		for (ControllerListener listener : listeners) {
-			listener.axisMoved(controller, axisCode, value);
+			if (listener.axisMoved(controller, axisCode, value)) break;
 		}
 	}
 
 	void buttonChanged(Lwjgl3Controller controller, int buttonCode, boolean value) {
 		for (ControllerListener listener : listeners) {
 			if (value) {
-				listener.buttonDown(controller, buttonCode);
+				if (listener.buttonDown(controller, buttonCode)) break;
 			} else {
-				listener.buttonUp(controller, buttonCode);
+				if (listener.buttonUp(controller, buttonCode)) break;
 			}
 		}
 	}
 
 	void hatChanged(Lwjgl3Controller controller, int hatCode, PovDirection value) {
 		for (ControllerListener listener : listeners) {
-			listener.povMoved(controller, hatCode, value);
+			if (listener.povMoved(controller, hatCode, value)) break;
 		}
 	}
 

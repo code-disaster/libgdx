@@ -592,6 +592,10 @@ public class Lwjgl3Window extends Lwjgl3Runnables implements Disposable {
 			}
 		}
 
+		if (config.transparentFramebuffer) {
+			glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+		}
+
 		if (config.debug) {
 			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 		}

@@ -189,6 +189,10 @@ public class Lwjgl3WindowConfiguration {
 	/**
 	 * Sets whether to use vsync. This setting can be changed anytime at runtime
 	 * via {@link Graphics#setVSync(boolean)}.
+	 *
+	 * For multi-window applications, only one (the main) window should enable vsync.
+	 * Otherwise, every window will wait for the vertical blank on swap individually,
+	 * effectively cutting the frame rate to (refreshRate / numberOfWindows).
 	 */
 	public void useVsync(boolean vsync) {
 		this.vSyncEnabled = vsync;

@@ -22,6 +22,7 @@ import com.badlogic.gdx.Graphics.DisplayMode;
 import com.badlogic.gdx.Graphics.Monitor;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.glutils.HdpiMode;
 import com.badlogic.gdx.graphics.glutils.HdpiUtils;
 
 import java.io.PrintStream;
@@ -209,9 +210,10 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	 * lower resolution than the actual physical resolution. This setting allows
 	 * you to specify whether you want to work in logical or raw pixel units.
 	 * See {@link HdpiMode} for more information. Note that some OpenGL
-	 * functions like {@link GL20#glViewport} and {@link GL20#glScissor} require
-	 * raw pixel units. Use {@link HdpiUtils} to help with the conversion if
-	 * HdpiMode is set to {@link HdpiMode#Logical}. Defaults to {@link HdpiMode#Logical}.
+	 * functions like {@link GL20#glViewport(int, int, int, int)} and
+	 * {@link GL20#glScissor(int, int, int, int)} require raw pixel units. Use
+	 * {@link HdpiUtils} to help with the conversion if HdpiMode is set to
+	 * {@link HdpiMode#Logical}. Defaults to {@link HdpiMode#Logical}.
 	 */
 	public void setHdpiMode(HdpiMode mode) {
 		this.hdpiMode = mode;
@@ -295,25 +297,6 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	public static Monitor[] getMonitors() {
 		initializeGlfw();
 		return Lwjgl3Graphics.monitors;
-	}
-
-	public enum HdpiMode {
-		/**
-		 * mouse coordinates, {@link Graphics#getWidth()} and
-		 * {@link Graphics#getHeight()} will return logical coordinates
-		 * according to the system defined HDPI scaling. Rendering will be
-		 * performed to a backbuffer at raw resolution. Use {@link HdpiUtils}
-		 * when calling {@link GL20#glScissor} or {@link GL20#glViewport} which
-		 * expect raw coordinates.
-		 */
-		Logical,
-
-		/**
-		 * Mouse coordinates, {@link Graphics#getWidth()} and
-		 * {@link Graphics#getHeight()} will return raw pixel coordinates
-		 * irrespective of the system defined HDPI scaling.
-		 */
-		Pixels
 	}
 
 }

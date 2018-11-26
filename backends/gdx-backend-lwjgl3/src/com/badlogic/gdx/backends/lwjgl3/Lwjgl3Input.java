@@ -17,13 +17,15 @@
 package com.badlogic.gdx.backends.lwjgl3;
 
 import com.badlogic.gdx.*;
+import com.badlogic.gdx.graphics.glutils.HdpiMode;
 import com.badlogic.gdx.utils.Disposable;
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.*;
 
 import java.util.Arrays;
 
-import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration.HdpiMode;
-import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.*;
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_main;
+import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3Runnables.__post_render;
 import static org.lwjgl.glfw.GLFW.*;
 
 public class Lwjgl3Input implements Input, Disposable {

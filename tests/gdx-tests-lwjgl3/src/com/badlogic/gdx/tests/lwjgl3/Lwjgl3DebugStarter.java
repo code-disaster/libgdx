@@ -179,6 +179,16 @@ public class Lwjgl3DebugStarter {
 		config.setWindowedMode(640, 480);
 		config.setWindowListener(new Lwjgl3WindowListener() {
 			@Override
+			public void poll() {
+
+			}
+
+			@Override
+			public void configure() {
+
+			}
+
+			@Override
 			public void created(Lwjgl3Window window) {
 				Gdx.app.log("Window", "created");
 			}

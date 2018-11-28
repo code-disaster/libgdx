@@ -19,6 +19,7 @@ package com.badlogic.gdx.backends.lwjgl3;
 import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.glutils.GLVersion;
+import com.badlogic.gdx.graphics.glutils.HdpiMode;
 import com.badlogic.gdx.utils.*;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.*;
@@ -29,7 +30,6 @@ import org.lwjgl.system.MemoryStack;
 import java.nio.IntBuffer;
 
 import static com.badlogic.gdx.Graphics.BufferFormat;
-import static com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration.HdpiMode;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.system.MemoryUtil.NULL;

@@ -70,8 +70,8 @@ public class Matrix4 implements Serializable {
 	/** WW: Typically the value one. On Vector3 multiplication this value is ignored. */
 	public static final int M33 = 15;
 
-	private static final float tmp[] = new float[16];
-	public final float val[] = new float[16];
+	private static final float[] tmp = new float[16];
+	public final float[] val = new float[16];
 
 	/** Constructs an identity matrix */
 	public Matrix4 () {
@@ -702,8 +702,8 @@ public class Matrix4 implements Serializable {
 		return this;
 	}
 
-	static Quaternion quat = new Quaternion();
-	static Quaternion quat2 = new Quaternion();
+	private static final Quaternion quat = new Quaternion();
+	private static final Quaternion quat2 = new Quaternion();
 
 	/** Sets the matrix to a rotation matrix around the given axis.
 	 * 
@@ -715,7 +715,9 @@ public class Matrix4 implements Serializable {
 			idt();
 			return this;
 		}
-		return set(quat.set(axis, degrees));
+		synchronized (quat) {
+			return set(quat.set(axis, degrees));
+		}
 	}
 
 	/** Sets the matrix to a rotation matrix around the given axis.
@@ -728,7 +730,9 @@ public class Matrix4 implements Serializable {
 			idt();
 			return this;
 		}
-		return set(quat.setFromAxisRad(axis, radians));
+		synchronized (quat) {
+			return set(quat.setFromAxisRad(axis, radians));
+		}
 	}
 
 	/** Sets the matrix to a rotation matrix around the given axis.
@@ -743,7 +747,9 @@ public class Matrix4 implements Serializable {
 			idt();
 			return this;
 		}
-		return set(quat.setFromAxis(axisX, axisY, axisZ, degrees));
+		synchronized (quat) {
+			return set(quat.setFromAxis(axisX, axisY, axisZ, degrees));
+		}
 	}
 
 	/** Sets the matrix to a rotation matrix around the given axis.
@@ -758,7 +764,9 @@ public class Matrix4 implements Serializable {
 			idt();
 			return this;
 		}
-		return set(quat.setFromAxisRad(axisX, axisY, axisZ, radians));
+		synchronized (quat) {
+			return set(quat.setFromAxisRad(axisX, axisY, axisZ, radians));
+		}
 	}
 
 	/** Set the matrix to a rotation matrix between two vectors.
@@ -766,7 +774,9 @@ public class Matrix4 implements Serializable {
 	 * @param v2 The target vector
 	 * @return This matrix for the purpose of chaining methods together */
 	public Matrix4 setToRotation (final Vector3 v1, final Vector3 v2) {
-		return set(quat.setFromCross(v1, v2));
+		synchronized (quat) {
+			return set(quat.setFromCross(v1, v2));
+		}
 	}
 
 	/** Set the matrix to a rotation matrix between two vectors.
@@ -778,7 +788,9 @@ public class Matrix4 implements Serializable {
 	 * @param z2 The target vector z value
 	 * @return This matrix for the purpose of chaining methods together */
 	public Matrix4 setToRotation (final float x1, final float y1, final float z1, final float x2, final float y2, final float z2) {
-		return set(quat.setFromCross(x1, y1, z1, x2, y2, z2));
+		synchronized (quat) {
+			return set(quat.setFromCross(x1, y1, z1, x2, y2, z2));
+		}
 	}
 
 	/** Sets this matrix to a rotation matrix from the given euler angles.
@@ -787,8 +799,10 @@ public class Matrix4 implements Serializable {
 	 * @param roll the roll in degrees
 	 * @return This matrix */
 	public Matrix4 setFromEulerAngles (float yaw, float pitch, float roll) {
-		quat.setEulerAngles(yaw, pitch, roll);
-		return set(quat);
+		synchronized (quat) {
+			quat.setEulerAngles(yaw, pitch, roll);
+			return set(quat);
+		}
 	}
 	
 	/** Sets this matrix to a rotation matrix from the given euler angles.
@@ -797,8 +811,10 @@ public class Matrix4 implements Serializable {
 	 * @param roll the roll in radians
 	 * @return This matrix */
 	public Matrix4 setFromEulerAnglesRad (float yaw, float pitch, float roll) {
-		quat.setEulerAnglesRad(yaw, pitch, roll);
-		return set(quat);
+		synchronized (quat) {
+			quat.setEulerAnglesRad(yaw, pitch, roll);
+			return set(quat);
+		}
 	}
 
 	/** Sets this matrix to a scaling matrix
@@ -1458,8 +1474,10 @@ public class Matrix4 implements Serializable {
 	 * @return This matrix for the purpose of chaining methods together. */
 	public Matrix4 rotate (Vector3 axis, float degrees) {
 		if (degrees == 0) return this;
-		quat.set(axis, degrees);
-		return rotate(quat);
+		synchronized (quat) {
+			quat.set(axis, degrees);
+			return rotate(quat);
+		}
 	}
 
 	/** Postmultiplies this matrix with a (counter-clockwise) rotation matrix. Postmultiplication is also used by OpenGL ES' 1.x
@@ -1470,8 +1488,10 @@ public class Matrix4 implements Serializable {
 	 * @return This matrix for the purpose of chaining methods together. */
 	public Matrix4 rotateRad (Vector3 axis, float radians) {
 		if (radians == 0) return this;
-		quat.setFromAxisRad(axis, radians);
-		return rotate(quat);
+		synchronized (quat) {
+			quat.setFromAxisRad(axis, radians);
+			return rotate(quat);
+		}
 	}
 
 	/** Postmultiplies this matrix with a (counter-clockwise) rotation matrix. Postmultiplication is also used by OpenGL ES' 1.x
@@ -1483,8 +1503,10 @@ public class Matrix4 implements Serializable {
 	 * @return This matrix for the purpose of chaining methods together. */
 	public Matrix4 rotate (float axisX, float axisY, float axisZ, float degrees) {
 		if (degrees == 0) return this;
-		quat.setFromAxis(axisX, axisY, axisZ, degrees);
-		return rotate(quat);
+		synchronized (quat) {
+			quat.setFromAxis(axisX, axisY, axisZ, degrees);
+			return rotate(quat);
+		}
 	}
 
 	/** Postmultiplies this matrix with a (counter-clockwise) rotation matrix. Postmultiplication is also used by OpenGL ES' 1.x
@@ -1496,8 +1518,10 @@ public class Matrix4 implements Serializable {
 	 * @return This matrix for the purpose of chaining methods together. */
 	public Matrix4 rotateRad (float axisX, float axisY, float axisZ, float radians) {
 		if (radians == 0) return this;
-		quat.setFromAxisRad(axisX, axisY, axisZ, radians);
-		return rotate(quat);
+		synchronized (quat) {
+			quat.setFromAxisRad(axisX, axisY, axisZ, radians);
+			return rotate(quat);
+		}
 	}
 
 	/** Postmultiplies this matrix with a (counter-clockwise) rotation matrix. Postmultiplication is also used by OpenGL ES' 1.x
@@ -1518,7 +1542,9 @@ public class Matrix4 implements Serializable {
 	 * @param v2 The target vector
 	 * @return This matrix for the purpose of chaining methods together */
 	public Matrix4 rotate (final Vector3 v1, final Vector3 v2) {
-		return rotate(quat.setFromCross(v1, v2));
+		synchronized (quat) {
+			return rotate(quat.setFromCross(v1, v2));
+		}
 	}
 
 	/** Postmultiplies this matrix with a scale matrix. Postmultiplication is also used by OpenGL ES' 1.x

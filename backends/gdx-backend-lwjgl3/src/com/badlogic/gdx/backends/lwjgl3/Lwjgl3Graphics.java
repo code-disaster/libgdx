@@ -363,7 +363,7 @@ public class Lwjgl3Graphics implements Graphics, Disposable {
 			if (handle == primaryMonitor.getMonitorHandle()) {
 				monitors[i] = primaryMonitor;
 			} else {
-				monitors[i] = toLwjgl3Monitor(glfwMonitors.get(i));
+				monitors[i] = toLwjgl3Monitor(handle);
 			}
 		}
 	}

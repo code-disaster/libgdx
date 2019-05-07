@@ -277,6 +277,11 @@ public class Lwjgl3Input implements Input, Disposable {
 	}
 
 	@Override
+	public int getMaxPointers() {
+		return 1;
+	}
+
+	@Override
 	public int getX() {
 		return mouseX;
 	}
@@ -344,6 +349,11 @@ public class Lwjgl3Input implements Input, Disposable {
 	@Override
 	public boolean isButtonPressed(int button) {
 		return (pressedButtons & (1L << button)) != 0;
+	}
+
+	@Override
+	public boolean isButtonJustPressed(int button) {
+		throw new IllegalStateException();
 	}
 
 	@Override

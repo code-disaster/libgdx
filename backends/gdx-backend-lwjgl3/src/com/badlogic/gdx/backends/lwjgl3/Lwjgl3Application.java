@@ -70,7 +70,7 @@ public class Lwjgl3Application extends Lwjgl3Runnables implements Application {
 		this.graphics = new Lwjgl3Graphics(this.config);
 		this.audio = Gdx.audio = new MockAudio();
 		this.files = Gdx.files = new Lwjgl3Files();
-		this.net = Gdx.net = new Lwjgl3Net();
+		this.net = Gdx.net = new Lwjgl3Net(config);
 
 		Gdx.app = this;
 		Gdx.graphics = graphics;

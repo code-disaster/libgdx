@@ -35,6 +35,8 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 	int audioDeviceBufferSize = 512;
 	int audioDeviceBufferCount = 9;
 
+	int maxNetThreads = Integer.MAX_VALUE;
+
 	boolean useGL30 = false;
 	int gles30ContextMajorVersion = 3;
 	int gles30ContextMinorVersion = 2;
@@ -69,6 +71,7 @@ public class Lwjgl3ApplicationConfiguration extends Lwjgl3WindowConfiguration {
 		audioDeviceSimultaneousSources = config.audioDeviceSimultaneousSources;
 		audioDeviceBufferSize = config.audioDeviceBufferSize;
 		audioDeviceBufferCount = config.audioDeviceBufferCount;
+		maxNetThreads = config.maxNetThreads;
 		useGL30 = config.useGL30;
 		gles30ContextMajorVersion = config.gles30ContextMajorVersion;
 		gles30ContextMinorVersion = config.gles30ContextMinorVersion;

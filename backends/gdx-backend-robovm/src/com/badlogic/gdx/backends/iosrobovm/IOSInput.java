@@ -261,6 +261,11 @@ public class IOSInput implements Input {
 	}
 
 	@Override
+	public int getMaxPointers () {
+		return MAX_TOUCHES;
+	}
+
+	@Override
 	public int getX () {
 		return touchX[0];
 	}
@@ -333,6 +338,11 @@ public class IOSInput implements Input {
 	@Override
 	public boolean isButtonPressed (int button) {
 		return button == Buttons.LEFT && numTouched > 0;
+	}
+
+	@Override
+	public boolean isButtonJustPressed(int button) {
+		return button == Buttons.LEFT && justTouched;
 	}
 
 	@Override

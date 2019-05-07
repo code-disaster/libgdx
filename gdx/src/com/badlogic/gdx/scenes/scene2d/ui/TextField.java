@@ -256,18 +256,18 @@ public class TextField extends Widget implements Disableable {
 		float startX = 0;
 		for (int i = 0; i < glyphCount; i++) {
 			if (glyphPositions[i] >= -renderOffset) {
-				visibleTextStart = Math.max(0, i);
+				visibleTextStart = i;
 				startX = glyphPositions[i];
 				break;
 			}
 		}
 
 		// calculate last visible char based on visible width and render offset
-		int length = Math.min(displayText.length(), glyphPositions.length - 1);
-		visibleTextEnd = Math.min(length, cursor + 1);
-		for (; visibleTextEnd <= length; visibleTextEnd++)
-			if (glyphPositions[visibleTextEnd] > startX + visibleWidth) break;
-		visibleTextEnd = Math.max(0, visibleTextEnd - 1);
+		int end = visibleTextStart + 1;
+		float endX = visibleWidth - renderOffset;
+		for (int n = Math.min(displayText.length(), glyphCount); end <= n; end++)
+			if (glyphPositions[end] > endX) break;
+		visibleTextEnd = Math.max(0, end - 1);
 
 		if ((textHAlign & Align.left) == 0) {
 			textOffset = visibleWidth - (glyphPositions[visibleTextEnd] - startX);
@@ -287,14 +287,13 @@ public class TextField extends Widget implements Disableable {
 	}
 
 	private Drawable getBackgroundDrawable () {
-		Stage stage = getStage();
-		boolean focused = stage != null && stage.getKeyboardFocus() == this;
+		boolean focused = hasKeyboardFocus();
 		return (disabled && style.disabledBackground != null) ? style.disabledBackground
 			: ((focused && style.focusedBackground != null) ? style.focusedBackground : style.background);
 	}
 
 	public void draw (Batch batch, float parentAlpha) {
-		boolean focused = getStage() != null && getStage().getKeyboardFocus() == this;
+		boolean focused = hasKeyboardFocus();
 		if (focused != this.focused) {
 			this.focused = focused;
 			blinkTask.cancel();
@@ -303,7 +302,8 @@ public class TextField extends Widget implements Disableable {
 				Timer.schedule(blinkTask, blinkTime, blinkTime);
 			else
 				keyRepeatTask.cancel();
-		}
+		} else if (!focused) //
+			cursorOn = false;
 
 		final BitmapFont font = style.font;
 		final Color fontColor = (disabled && style.disabledFontColor != null) ? style.disabledFontColor
@@ -336,14 +336,13 @@ public class TextField extends Widget implements Disableable {
 		float yOffset = font.isFlipped() ? -textHeight : 0;
 		if (displayText.length() == 0) {
 			if (!focused && messageText != null) {
+				BitmapFont messageFont = style.messageFont != null ? style.messageFont : font;
 				if (style.messageFontColor != null) {
-					font.setColor(style.messageFontColor.r, style.messageFontColor.g, style.messageFontColor.b,
+					messageFont.setColor(style.messageFontColor.r, style.messageFontColor.g, style.messageFontColor.b,
 						style.messageFontColor.a * color.a * parentAlpha);
 				} else
-					font.setColor(0.7f, 0.7f, 0.7f, color.a * parentAlpha);
-				BitmapFont messageFont = style.messageFont != null ? style.messageFont : font;
-				messageFont.draw(batch, messageText, x + bgLeftWidth, y + textY + yOffset, 0, messageText.length(),
-					width - bgLeftWidth - bgRightWidth, textHAlign, false, "...");
+					messageFont.setColor(0.7f, 0.7f, 0.7f, color.a * parentAlpha);
+				drawMessageText(batch, messageFont, x + bgLeftWidth, y + textY + yOffset, width - bgLeftWidth - bgRightWidth);
 			}
 		} else {
 			font.setColor(fontColor.r, fontColor.g, fontColor.b, fontColor.a * color.a * parentAlpha);
@@ -375,6 +374,10 @@ public class TextField extends Widget implements Disableable {
 
 	protected void drawText (Batch batch, BitmapFont font, float x, float y) {
 		font.draw(batch, displayText, x + textOffset, y, visibleTextStart, visibleTextEnd, 0, Align.left, false);
+	}
+
+	protected void drawMessageText (Batch batch, BitmapFont font, float x, float y, float maxWidth) {
+		font.draw(batch, messageText, x, y, 0, messageText.length(), maxWidth, textHAlign, false, "...");
 	}
 
 	protected void drawCursor (Drawable cursorPatch, Batch batch, BitmapFont font, float x, float y) {
@@ -422,6 +425,9 @@ public class TextField extends Widget implements Disableable {
 		} else
 			fontOffset = 0;
 		glyphPositions.add(x);
+
+		visibleTextStart = Math.min(visibleTextStart, glyphPositions.size);
+		visibleTextEnd = MathUtils.clamp(visibleTextEnd, visibleTextStart, glyphPositions.size);
 
 		if (selectionStart > newDisplayText.length()) selectionStart = textLength;
 	}
@@ -722,6 +728,10 @@ public class TextField extends Widget implements Disableable {
 		this.textHAlign = alignment;
 	}
 
+	public int getAlignment () {
+		return textHAlign;
+	}
+
 	/** If true, the text in this text field will be shown as bullet characters.
 	 * @see #setPasswordCharacter(char) */
 	public void setPasswordMode (boolean passwordMode) {
@@ -864,8 +874,7 @@ public class TextField extends Widget implements Disableable {
 			blinkTask.cancel();
 			if (focused) Timer.schedule(blinkTask, blinkTime, blinkTime);
 
-			Stage stage = getStage();
-			if (stage == null || stage.getKeyboardFocus() != TextField.this) return false;
+			if (!hasKeyboardFocus()) return false;
 
 			boolean repeat = false;
 			boolean ctrl = UIUtils.ctrl();
@@ -1003,8 +1012,7 @@ public class TextField extends Widget implements Disableable {
 				if (character < 32) return false;
 			}
 
-			Stage stage = getStage();
-			if (stage == null || stage.getKeyboardFocus() != TextField.this) return false;
+			if (!hasKeyboardFocus()) return false;
 
 			if (UIUtils.isMac && Gdx.input.isKeyPressed(Keys.SYM)) return true;
 
@@ -1019,21 +1027,24 @@ public class TextField extends Widget implements Disableable {
 				if (add || remove) {
 					String oldText = text;
 					int oldCursor = cursor;
-					if (hasSelection)
-						cursor = delete(false);
-					else {
-						if (backspace && cursor > 0) {
-							text = text.substring(0, cursor - 1) + text.substring(cursor--);
-							renderOffset = 0;
-						}
-						if (delete && cursor < text.length()) {
-							text = text.substring(0, cursor) + text.substring(cursor + 1);
+					if (remove) {
+						if (hasSelection)
+							cursor = delete(false);
+						else {
+							if (backspace && cursor > 0) {
+								text = text.substring(0, cursor - 1) + text.substring(cursor--);
+								renderOffset = 0;
+							}
+							if (delete && cursor < text.length()) {
+								text = text.substring(0, cursor) + text.substring(cursor + 1);
+							}
 						}
 					}
 					if (add && !remove) {
 						// Character may be added to the text.
 						if (!enter && filter != null && !filter.acceptChar(TextField.this, character)) return true;
 						if (!withinMaxLength(text.length())) return true;
+						if (hasSelection) cursor = delete(false);
 						String insertion = enter ? "\n" : String.valueOf(character);
 						text = insert(cursor++, insertion, text);
 					}

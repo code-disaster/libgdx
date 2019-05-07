@@ -484,7 +484,7 @@ public class Array<T> implements Iterable<T> {
 		return (T[])toArray(items.getClass().getComponentType());
 	}
 
-	public <V> V[] toArray (Class type) {
+	public <V> V[] toArray (Class<V> type) {
 		V[] result = (V[])ArrayReflection.newInstance(type, size);
 		System.arraycopy(items, 0, result, 0, size);
 		return result;
@@ -548,12 +548,12 @@ public class Array<T> implements Iterable<T> {
 
 	/** @see #Array(Class) */
 	static public <T> Array<T> of (Class<T> arrayType) {
-		return new Array<T>(arrayType);
+		return new Array(arrayType);
 	}
 
 	/** @see #Array(boolean, int, Class) */
 	static public <T> Array<T> of (boolean ordered, int capacity, Class<T> arrayType) {
-		return new Array<T>(ordered, capacity, arrayType);
+		return new Array(ordered, capacity, arrayType);
 	}
 
 	/** @see #Array(Object[]) */

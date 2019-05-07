@@ -16,7 +16,6 @@
 
 package com.badlogic.gdx;
 
-import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.utils.ObjectIntMap;
 
 /** <p>
@@ -579,6 +578,9 @@ public interface Input {
 	/** @return The rate of rotation in rad/s around the Z axis */
 	public float getGyroscopeZ ();
 	
+	/** @return The maximum number of pointers supported */
+	public int getMaxPointers ();
+
 	/** @return The x coordinate of the last touch on touch screen devices and the current mouse position on desktop for the first
 	 *         pointer in screen coordinates. The screen origin is the top left corner. */
 	public int getX ();
@@ -649,6 +651,13 @@ public interface Input {
 	 * @param button the button to check.
 	 * @return whether the button is down or not. */
 	public boolean isButtonPressed (int button);
+
+	/** Returns whether a given button has just been pressed. Button constants can be found in {@link Buttons}. On Android only the Buttons#LEFT
+	 * constant is meaningful before version 4.0.
+	 *
+	 * @param button the button to check.
+	 * @return true or false. */
+	public boolean isButtonJustPressed (int button);
 
 	/** Returns whether the key is pressed.
 	 * 

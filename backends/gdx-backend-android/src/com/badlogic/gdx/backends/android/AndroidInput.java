@@ -115,6 +115,7 @@ public class AndroidInput implements Input, OnKeyListener, OnTouchListener {
 	private boolean[] keys = new boolean[SUPPORTED_KEYS];
 	private boolean keyJustPressed = false;
 	private boolean[] justPressedKeys = new boolean[SUPPORTED_KEYS];
+	private boolean[] justPressedButtons = new boolean[NUM_TOUCHES];
 	private SensorManager manager;
 	public boolean accelerometerAvailable = false;
 	protected final float[] accelerometerValues = new float[3];
@@ -264,6 +265,11 @@ public class AndroidInput implements Input, OnKeyListener, OnTouchListener {
 	}
 
 	@Override
+	public int getMaxPointers () {
+		return NUM_TOUCHES;
+	}
+
+	@Override
 	public int getX () {
 		synchronized (this) {
 			return touchX[0];
@@ -351,7 +357,12 @@ public class AndroidInput implements Input, OnKeyListener, OnTouchListener {
 
 	void processEvents () {
 		synchronized (this) {
-			justTouched = false;
+			if (justTouched) {
+				justTouched = false;
+				for (int i = 0; i < justPressedButtons.length; i++) {
+					justPressedButtons[i] = false;
+				}
+			}
 			if (keyJustPressed) {
 				keyJustPressed = false;
 				for (int i = 0; i < justPressedKeys.length; i++) {
@@ -389,6 +400,7 @@ public class AndroidInput implements Input, OnKeyListener, OnTouchListener {
 					case TouchEvent.TOUCH_DOWN:
 						processor.touchDown(e.x, e.y, e.pointer, e.button);
 						justTouched = true;
+						justPressedButtons[e.button] = true;
 						break;
 					case TouchEvent.TOUCH_UP:
 						processor.touchUp(e.x, e.y, e.pointer, e.button);
@@ -649,6 +661,12 @@ public class AndroidInput implements Input, OnKeyListener, OnTouchListener {
 		}
 	}
 
+	@Override
+	public boolean isButtonJustPressed(int button) {
+		if(button < 0 || button > NUM_TOUCHES) return false;
+		return justPressedButtons[button];
+	}
+
 	final float[] R = new float[9];
 	final float[] orientation = new float[3];
 
@@ -798,8 +816,13 @@ public class AndroidInput implements Input, OnKeyListener, OnTouchListener {
 		if (peripheral == Peripheral.Compass) return compassAvailable;
 		if (peripheral == Peripheral.HardwareKeyboard) return keyboardAvailable;
 		if (peripheral == Peripheral.OnscreenKeyboard) return true;
-		if (peripheral == Peripheral.Vibrator)
-			return (Build.VERSION.SDK_INT >= 11 && vibrator != null) ? vibrator.hasVibrator() : vibrator != null;
+		if (peripheral == Peripheral.Vibrator) {
+			if (Build.VERSION.SDK_INT >= 11) {
+				return vibrator != null && vibrator.hasVibrator();
+			} else {
+				return vibrator != null;
+			}
+		}
 		if (peripheral == Peripheral.MultitouchScreen) return hasMultitouch;
 		if (peripheral == Peripheral.RotationVector) return rotationVectorAvailable;
 		if (peripheral == Peripheral.Pressure) return true;

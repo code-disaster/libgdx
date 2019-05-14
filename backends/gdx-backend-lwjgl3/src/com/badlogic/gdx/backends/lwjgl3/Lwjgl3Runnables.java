@@ -52,7 +52,6 @@ public class Lwjgl3Runnables {
 
 	private static volatile long mainThreadContext = APPLICATION_CONTEXT;
 	private static volatile long renderThreadContext = APPLICATION_CONTEXT;
-	private static volatile long activeCurrentContext = APPLICATION_CONTEXT;
 	private static final LongMap<Lock> contextLocks = new LongMap<>();
 
 	@FunctionalInterface
@@ -301,10 +300,7 @@ public class Lwjgl3Runnables {
 					throw new ConcurrentModificationException("Context already active in render thread");
 				}
 			}
-			if (context != 0 && context != activeCurrentContext) {
-				glfwMakeContextCurrent(context);
-				activeCurrentContext = context;
-			}
+			glfwMakeContextCurrent(context);
 			mainThreadContext = context;
 			if (current != APPLICATION_CONTEXT) {
 				Lock lock;
@@ -404,10 +400,7 @@ public class Lwjgl3Runnables {
 					throw new ConcurrentModificationException("Context already active in main thread");
 				}
 			}
-			if (context != 0 && context != activeCurrentContext) {
-				glfwMakeContextCurrent(context);
-				activeCurrentContext = context;
-			}
+			glfwMakeContextCurrent(context);
 			renderThreadContext = context;
 			if (current != APPLICATION_CONTEXT) {
 				Lock lock;

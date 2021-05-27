@@ -31,6 +31,7 @@ public class JsonWriter extends Writer {
 	private boolean named;
 	private OutputType outputType = OutputType.json;
 	private boolean quoteLongValues = false;
+	private final StringBuilder outputBuffer = new StringBuilder(128);
 
 	public JsonWriter (Writer writer) {
 		this.writer = writer;
@@ -57,7 +58,7 @@ public class JsonWriter extends Writer {
 			current.needsComma = true;
 		else
 			writer.write(',');
-		writer.write(outputType.quoteName(name));
+		writer.write(outputType.quoteName(outputBuffer, name));
 		writer.write(':');
 		named = true;
 		return this;
@@ -85,7 +86,7 @@ public class JsonWriter extends Writer {
 			if (number.doubleValue() == longValue) value = longValue;
 		}
 		requireCommaOrName();
-		writer.write(outputType.quoteValue(value));
+		writer.write(outputType.quoteValue(outputBuffer, value));
 		return this;
 	}
 
@@ -186,7 +187,19 @@ public class JsonWriter extends Writer {
 			if (value == null) return "null";
 			String string = value.toString();
 			if (value instanceof Number || value instanceof Boolean) return string;
-			StringBuilder buffer = new StringBuilder(string);
+			return quoteValue0(new StringBuilder(string), string);
+		}
+
+		public String quoteValue (StringBuilder buffer, Object value) {
+			if (value == null) return "null";
+			String string = value.toString();
+			if (value instanceof Number || value instanceof Boolean) return string;
+			buffer.setLength(0);
+			buffer.append(string);
+			return quoteValue0(buffer, string);
+		}
+
+		private String quoteValue0 (StringBuilder buffer, String string) {
 			buffer.replace('\\', "\\\\").replace('\r', "\\r").replace('\n', "\\n").replace('\t', "\\t");
 			if (this == OutputType.minimal && !string.equals("true") && !string.equals("false") && !string.equals("null")
 				&& !string.contains("//") && !string.contains("/*")) {
@@ -198,7 +211,16 @@ public class JsonWriter extends Writer {
 		}
 
 		public String quoteName (String value) {
-			StringBuilder buffer = new StringBuilder(value);
+			return quoteName0(new StringBuilder(value), value);
+		}
+
+		public String quoteName (StringBuilder buffer, String value) {
+			buffer.setLength(0);
+			buffer.append(value);
+			return quoteName0(buffer, value);
+		}
+
+		private String quoteName0 (StringBuilder buffer, String value) {
 			buffer.replace('\\', "\\\\").replace('\r', "\\r").replace('\n', "\\n").replace('\t', "\\t");
 			switch (this) {
 			case minimal:
